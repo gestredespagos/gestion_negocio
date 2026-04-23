@@ -1,0 +1,2140 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Gestión Negocio Pro v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root {
+  --navy: #0f1f3d;
+  --navy2: #1a3460;
+  --accent: #2563eb;
+  --accent2: #3b82f6;
+  --green: #059669;
+  --red: #dc2626;
+  --amber: #d97706;
+  --purple: #7c3aed;
+  --bg: #f0f4fb;
+  --card: #ffffff;
+  --border: #dde3f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --radius: 16px;
+  --shadow: 0 2px 16px rgba(15,31,61,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); font-family: 'Sora', sans-serif; color: var(--text); min-height: 100vh; }
+
+.topbar {
+  background: var(--navy);
+  color: white;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 20px rgba(15,31,61,0.3);
+}
+.topbar-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.5px; }
+.topbar-title span { color: #60a5fa; }
+
+.layout { display: flex; min-height: calc(100vh - 60px); }
+.sidebar {
+  width: 220px;
+  background: var(--navy2);
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 60px;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.nav-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  font-family: 'Sora', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+.nav-btn.active { background: var(--accent); color: white; font-weight: 600; }
+.nav-section { color: rgba(255,255,255,0.3); font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; padding: 12px 14px 4px; }
+
+.main { flex: 1; padding: 24px; overflow-x: hidden; }
+.panel { display: none; animation: fadeIn 0.2s ease; }
+.panel.active-panel { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.kpi-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+.kpi-card .kpi-label { font-size: 0.7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.kpi-card .kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; font-weight: 600; color: var(--navy); }
+.kpi-card .kpi-value.positive { color: var(--green); }
+.kpi-card .kpi-value.negative { color: var(--red); }
+.kpi-card .kpi-value.purple { color: var(--purple); }
+
+.card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 18px; }
+.card-title { font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+.form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+input[type="text"], input[type="number"], input[type="date"], select, textarea {
+  padding: 9px 13px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  font-family: 'Sora', sans-serif;
+  font-size: 0.82rem;
+  color: var(--text);
+  background: white;
+  outline: none;
+  transition: border-color 0.15s;
+}
+input:focus, select:focus { border-color: var(--accent2); }
+input.input-error { border-color: var(--red) !important; background: #fff5f5; }
+input.input-ok { border-color: var(--green); }
+.field-hint { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+.field-hint.error { color: var(--red); font-weight: 600; }
+.field-hint.warn { color: var(--amber); font-weight: 600; }
+.field-hint.ok { color: var(--green); font-weight: 600; }
+
+.btn { padding: 9px 18px; border-radius: 10px; border: none; font-family: 'Sora', sans-serif; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s, transform 0.1s; }
+.btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-success { background: var(--green); color: white; }
+.btn-danger { background: var(--red); color: white; }
+.btn-amber { background: var(--amber); color: white; }
+.btn-navy { background: var(--navy); color: white; }
+.btn-purple { background: var(--purple); color: white; }
+.btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+.btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--text); }
+
+.action-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+
+.table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+th { background: #f1f5fb; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); padding: 10px 12px; border-bottom: 1.5px solid var(--border); white-space: nowrap; }
+td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f8faff; }
+.positive { color: var(--green); font-weight: 600; }
+.negative { color: var(--red); font-weight: 600; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; }
+.badge-red { background: #fee2e2; color: var(--red); }
+.badge-green { background: #dcfce7; color: var(--green); }
+.badge-amber { background: #fef3c7; color: var(--amber); }
+.badge-blue { background: #dbeafe; color: var(--accent); }
+.badge-purple { background: #ede9fe; color: var(--purple); }
+
+#statusMsg {
+  position: fixed; bottom: 20px; right: 20px;
+  padding: 12px 20px; border-radius: 12px;
+  font-size: 0.82rem; font-weight: 600;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  z-index: 9999; display: none;
+  animation: slideUp 0.25s ease;
+  max-width: 320px;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+#statusMsg.success { background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+#statusMsg.error { background: #fee2e2; color: #7f1d1d; border: 1px solid #fca5a5; }
+
+.pct-bar-wrap { margin: 12px 0; }
+.pct-bar { height: 10px; border-radius: 5px; background: var(--border); overflow: hidden; }
+.pct-bar-fill { height: 100%; border-radius: 5px; background: var(--accent); transition: width 0.3s; }
+.pct-info { font-size: 0.75rem; color: var(--muted); margin-top: 4px; display: flex; justify-content: space-between; }
+.apertura-badge { background: #fef9c3; color: #713f12; padding: 3px 9px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; }
+.section-divider { border: none; border-top: 1.5px solid var(--border); margin: 18px 0; }
+
+.drive-section { background: #f0f7ff; border: 1.5px solid #bfdbfe; border-radius: 12px; padding: 16px; margin-top: 12px; }
+.drive-section h4 { color: var(--accent); font-size: 0.85rem; margin-bottom: 10px; }
+
+canvas { max-height: 260px; width: 100%; }
+
+/* CARRITO DE VENTAS */
+.carrito-container { background: #f8faff; border: 1.5px solid var(--border); border-radius: 12px; padding: 14px; margin-top: 12px; }
+.carrito-title { font-size: 0.82rem; font-weight: 700; color: var(--navy); margin-bottom: 10px; }
+.carrito-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+.carrito-item:last-child { border-bottom: none; }
+.carrito-total { display: flex; justify-content: space-between; padding-top: 10px; font-weight: 700; font-size: 0.85rem; color: var(--navy); border-top: 2px solid var(--border); margin-top: 8px; }
+
+/* MÉTODO PAGO SELECTOR */
+.metodo-pago-btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.metodo-btn { padding: 8px 16px; border-radius: 10px; border: 2px solid var(--border); background: white; font-family: 'Sora', sans-serif; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; color: var(--text); }
+.metodo-btn.selected { border-color: var(--accent); background: #eff6ff; color: var(--accent); }
+.metodo-btn:hover { border-color: var(--accent2); }
+
+/* MODAL */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(15,31,61,0.6); z-index: 1000;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: white; border-radius: 20px; padding: 28px;
+  max-width: 480px; width: 100%;
+  box-shadow: 0 20px 60px rgba(15,31,61,0.25);
+  animation: fadeIn 0.2s ease;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-title { font-size: 1.1rem; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+.modal-info { background: #f8faff; border-radius: 10px; padding: 12px; margin-bottom: 14px; font-size: 0.8rem; }
+.modal-info p { margin: 4px 0; }
+#qrCanvas { display: flex; justify-content: center; margin: 16px 0; }
+#qrCanvas canvas, #qrCanvas img { border: 6px solid white; box-shadow: 0 4px 16px rgba(0,0,0,0.1); border-radius: 8px; }
+.modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+.modal-btns .btn { flex: 1; }
+
+/* APORTE MODAL */
+.aporte-modal .modal-box { max-width: 420px; }
+
+/* CONFIGURACIÓN */
+.config-group { margin-bottom: 18px; }
+.config-group label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
+.config-group input { width: 100%; }
+.config-hint { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+
+/* ESTADÍSTICAS */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.stats-card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.stats-card h4 { font-size: 0.85rem; color: var(--navy); margin-bottom: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; border-bottom: 1.5px solid var(--border); padding-bottom: 8px; }
+.stats-list { list-style: none; }
+.stats-list li { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.75rem; }
+.stats-list li:last-child { border-bottom: none; }
+.stats-list .rank { font-weight: 700; color: var(--accent); width: 28px; }
+.stats-list .name { flex: 1; }
+.stats-list .value { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.stats-period { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.stats-period-btn { padding: 5px 12px; border-radius: 20px; background: var(--bg); border: 1.5px solid var(--border); font-size: 0.7rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.stats-period-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.acerca-creador { background: linear-gradient(135deg, #1a3460 0%, #0f1f3d 100%); color: white; border-radius: var(--radius); padding: 20px; text-align: center; margin-top: 20px; }
+.acerca-creador h3 { font-size: 1rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.acerca-creador p { font-size: 0.8rem; opacity: 0.9; }
+.acerca-creador .version { font-size: 0.65rem; opacity: 0.6; margin-top: 6px; }
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .layout { flex-direction: column; }
+  .main { padding: 14px; }
+  .mobile-nav { display: flex !important; }
+  .dashboard { grid-template-columns: repeat(2, 1fr); }
+}
+.mobile-nav {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 14px;
+  background: var(--navy2);
+}
+.mobile-nav .nav-btn { font-size: 0.72rem; padding: 7px 10px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">📋 Gestión <span>Negocio Pro</span> <span style="font-size:0.65rem;opacity:0.5;font-weight:400">v2</span></div>
+  <div style="font-size:0.72rem;color:rgba(255,255,255,0.5)" id="topbarCaja">Caja: —</div>
+</div>
+
+<!-- MOBILE NAV -->
+<div class="mobile-nav" id="mobileNav">
+  <button class="nav-btn active" data-tab="inicio">🏠</button>
+  <button class="nav-btn" data-tab="inventario">📦</button>
+  <button class="nav-btn" data-tab="compras">🛒</button>
+  <button class="nav-btn" data-tab="ventas">💵</button>
+  <button class="nav-btn" data-tab="caja">💼</button>
+  <button class="nav-btn" data-tab="socios">👥</button>
+  <button class="nav-btn" data-tab="resumen">📅</button>
+  <button class="nav-btn" data-tab="estadisticas">📊</button>
+  <button class="nav-btn" data-tab="datos">🗄️</button>
+  <button class="nav-btn" data-tab="config">⚙️</button>
+  <button class="nav-btn" data-tab="ayuda">❓</button>
+</div>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="nav-section">Principal</div>
+    <button class="nav-btn active" data-tab="inicio">🏠 Inicio</button>
+    <button class="nav-btn" data-tab="inventario">📦 Inventario</button>
+    <div class="nav-section">Operaciones</div>
+    <button class="nav-btn" data-tab="compras">🛒 Registrar Compra</button>
+    <button class="nav-btn" data-tab="ventas">💵 Registrar Venta</button>
+    <button class="nav-btn" data-tab="caja">💼 Movimientos Caja</button>
+    <div class="nav-section">Gestión</div>
+    <button class="nav-btn" data-tab="socios">👥 Socios</button>
+    <button class="nav-btn" data-tab="resumen">📅 Resumen Diario</button>
+    <div class="nav-section">Sistema</div>
+    <button class="nav-btn" data-tab="estadisticas">📊 Estadísticas</button>
+    <button class="nav-btn" data-tab="datos">🗄️ Importar / Exportar</button>
+    <button class="nav-btn" data-tab="config">⚙️ Configuración</button>
+    <button class="nav-btn" data-tab="ayuda">❓ Ayuda</button>
+  </nav>
+
+  <div class="main">
+    <div id="statusMsg"></div>
+
+    <!-- INICIO / DASHBOARD -->
+    <div id="panel-inicio" class="panel active-panel">
+      <div class="dashboard">
+        <div class="kpi-card"><div class="kpi-label">💰 Caja actual</div><div class="kpi-value" id="cajaActual">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">💵 Efectivo en caja</div><div class="kpi-value positive" id="efectivoCaja">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">💳 Transferencias</div><div class="kpi-value purple" id="transferenciasCaja">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">🔢 N° transferencias</div><div class="kpi-value purple" id="numTransferencias">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">📈 Ingreso total</div><div class="kpi-value positive" id="ingresoTotal">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">🏆 Ganancia real</div><div class="kpi-value" id="gananciaTotal">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">📦 Inv. inventario</div><div class="kpi-value" id="inversionInventario">0</div></div>
+        <div class="kpi-card"><div class="kpi-label">⚡ Ganancia potencial</div><div class="kpi-value positive" id="gananciaPotencial">0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Resumen gráfico</div>
+        <canvas id="graficoGanancias"></canvas>
+      </div>
+    </div>
+
+    <!-- INVENTARIO -->
+    <div id="panel-inventario" class="panel">
+      <div class="card">
+        <div class="card-title">📦 Stock actual</div>
+        <div class="table-wrap">
+          <table id="tablaInventario">
+            <thead><tr><th>Producto</th><th>Stock</th><th>Precio Prom.</th><th>Valor</th><th>Precio Venta Ref</th><th>Ganancia Pot.</th><th>Estado</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPRAS -->
+    <div id="panel-compras" class="panel">
+      <div class="card">
+        <div class="card-title">🛒 Registrar Compra</div>
+        <div class="form-row">
+          <div class="form-group"><label>Fecha</label><input type="date" id="compraFecha"></div>
+          <div class="form-group">
+            <label>Producto</label>
+            <select id="compraProducto"></select>
+            <div style="display:flex;gap:6px;margin-top:5px">
+              <input type="text" id="nuevoProducto" placeholder="Nuevo producto" style="flex:1">
+              <button class="btn btn-ghost btn-sm" id="btnCrearProducto">➕</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Cantidad</label>
+            <input type="number" id="compraCantidad" min="0.01" step="any" placeholder="0">
+            <div class="field-hint" id="compraCantidadHint"></div>
+          </div>
+          <div class="form-group">
+            <label>Precio unitario</label>
+            <input type="number" id="compraPrecio" min="0" step="any" placeholder="0">
+            <div class="field-hint" id="compraPrecioHint">Última compra: —</div>
+          </div>
+          <div class="form-group">
+            <label>Total estimado</label>
+            <div style="padding:9px 13px;background:#f8fafc;border-radius:10px;border:1.5px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:0.82rem" id="compraTotal">0.00</div>
+            <div class="field-hint" id="cajaDisponibleHint"></div>
+          </div>
+          <button class="btn btn-primary" id="btnAgregarCompra">Registrar Compra</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Historial de Compras</div>
+        <div class="table-wrap">
+          <table id="tablaCompras"><thead><tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Inversión</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- VENTAS -->
+    <div id="panel-ventas" class="panel">
+      <div class="card">
+        <div class="card-title">💵 Registrar Venta</div>
+        <div class="form-row">
+          <div class="form-group"><label>Fecha</label><input type="date" id="ventaFecha"></div>
+          <div class="form-group">
+            <label>Producto</label>
+            <select id="ventaProducto"></select>
+          </div>
+          <div class="form-group">
+            <label>Cantidad</label>
+            <input type="number" id="ventaCantidad" min="0.01" step="any" placeholder="0">
+            <div class="field-hint" id="ventaStockHint"></div>
+          </div>
+          <div class="form-group">
+            <label>Precio venta</label>
+            <input type="number" id="ventaPrecioUnitario" min="0" step="any" placeholder="0">
+            <div class="field-hint" id="ventaPrecioHint">Última venta: —</div>
+          </div>
+          <div class="form-group">
+            <label>Subtotal</label>
+            <div style="padding:9px 13px;background:#f8fafc;border-radius:10px;border:1.5px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:0.82rem" id="ventaSubtotal">0.00</div>
+          </div>
+          <button class="btn btn-success btn-sm" id="btnAddCarrito">➕ Agregar al carrito</button>
+        </div>
+
+        <!-- CARRITO -->
+        <div class="carrito-container" id="carritoContainer">
+          <div class="carrito-title">🛒 Carrito de venta</div>
+          <div id="carritoItems"><p style="color:var(--muted);font-size:0.78rem;text-align:center;padding:10px">Sin productos aún</p></div>
+          <div class="carrito-total" id="carritoTotal" style="display:none">
+            <span>Total a cobrar:</span>
+            <span id="carritoTotalMonto" style="font-family:'JetBrains Mono',monospace;color:var(--green)">0.00 CUP</span>
+          </div>
+        </div>
+
+        <!-- MÉTODO DE PAGO -->
+        <div style="margin-top:14px">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Método de pago</div>
+          <div class="metodo-pago-btns">
+            <button class="metodo-btn selected" data-metodo="efectivo">💵 Efectivo</button>
+            <button class="metodo-btn" data-metodo="transfermovil">📱 Transfermóvil</button>
+            <button class="metodo-btn" data-metodo="enzona">📱 EnZona</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-success" id="btnFinalizarVenta">✅ Finalizar venta</button>
+          <button class="btn btn-danger btn-sm" id="btnLimpiarCarrito">🗑️ Vaciar carrito</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Historial de Ventas</div>
+        <div class="table-wrap">
+          <table id="tablaVentas"><thead><tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Precio Venta</th><th>Ingreso</th><th>Costo</th><th>Ganancia</th><th>Método</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAJA -->
+    <div id="panel-caja" class="panel">
+      <div class="card">
+        <div class="card-title">💼 Registrar Movimiento de Caja</div>
+        <div class="form-row">
+          <div class="form-group"><label>Fecha</label><input type="date" id="movFecha"></div>
+          <div class="form-group">
+            <label>Tipo</label>
+            <select id="movTipo">
+              <option value="Apertura">🏦 Apertura (Capital inicial)</option>
+              <option value="Aporte">💰 Aporte de capital</option>
+              <option value="Deposito">💳 Depósito</option>
+              <option value="Venta en efectivo">💵 Venta en efectivo</option>
+              <option value="Transferencia recibida">📱 Transferencia recibida</option>
+              <option value="Compra">🛒 Compra</option>
+              <option value="Gasto">📤 Gasto</option>
+              <option value="Retiro socio">👤 Retiro socio</option>
+            </select>
+            <div class="field-hint" id="aperturaHint"></div>
+          </div>
+          <div class="form-group"><label>Concepto</label><input type="text" id="movConcepto" placeholder="Descripción"></div>
+          <div class="form-group"><label>Socio (opcional)</label><select id="movSocio"></select></div>
+          <div id="camposEstandar" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div class="form-group">
+              <label>Entrada (ingreso)</label>
+              <input type="number" id="movEntrada" min="0" step="any" placeholder="0">
+              <div class="field-hint" id="movEntradaHint"></div>
+            </div>
+            <div class="form-group">
+              <label>Salida (egreso)</label>
+              <input type="number" id="movSalida" min="0" step="any" placeholder="0">
+              <div class="field-hint" id="movSalidaHint"></div>
+            </div>
+          </div>
+          <div id="camposMixtos" style="display:none;flex-wrap:wrap;gap:12px;align-items:flex-end;background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:12px;width:100%">
+            <p style="width:100%;font-size:0.75rem;color:var(--accent);font-weight:600;margin-bottom:4px">💡 Puedes registrar en efectivo, transferencia, o ambos a la vez</p>
+            <div class="form-group">
+              <label>💵 En efectivo</label>
+              <input type="number" id="movEfectivo" min="0" step="any" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>📱 En transferencia</label>
+              <input type="number" id="movTransferencia" min="0" step="any" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Total aportado</label>
+              <div id="movTotalMixto" style="font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;color:var(--green);padding:9px 13px;background:white;border-radius:10px;border:1.5px solid var(--border)">0.00</div>
+            </div>
+          </div>
+          <button class="btn btn-navy" id="btnAddMovimiento">Registrar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Tabla de Caja</div>
+        <div class="table-wrap">
+          <table id="tablaCaja"><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Socio</th><th>Efectivo</th><th>Transferencia</th><th>Salida</th><th>Saldo</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOCIOS -->
+    <div id="panel-socios" class="panel">
+      <div class="card">
+        <div class="card-title">➕ Agregar Nuevo Socio</div>
+        <div class="form-row">
+          <div class="form-group"><label>Nombre</label><input type="text" id="nuevoSocio" placeholder="Nombre del socio"></div>
+          <div class="form-group">
+            <label>% Participación</label>
+            <input type="number" id="nuevoSocioPorc" min="0" max="100" step="0.01" placeholder="0">
+            <div class="field-hint" id="nuevoSocioPorcHint"></div>
+          </div>
+          <button class="btn btn-primary" id="btnAgregarSocio">➕ Agregar Socio</button>
+        </div>
+        <div class="pct-bar-wrap">
+          <div class="pct-bar"><div class="pct-bar-fill" id="pctBarFill" style="width:0%"></div></div>
+          <div class="pct-info">
+            <span id="pctTotal">Total socios: 0%</span>
+            <span id="pctDisponible" style="color:var(--green)">Disponible empresa: 100%</span>
+          </div>
+        </div>
+        <div class="field-hint" id="pctAlerta" style="margin-top:4px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">👥 Socios y participación</div>
+        <div class="table-wrap">
+          <table id="tablaSocios">
+            <thead><tr><th>Socio</th><th>%</th><th>Ganancia a distribuir</th><th>Retirado</th><th>Disponible</th><th>Acciones</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📜 Historial de Retiros</div>
+        <div class="table-wrap">
+          <table id="tablaHistorialRetiros"><thead><tr><th>Fecha</th><th>Socio</th><th>Monto Retirado</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESUMEN -->
+    <div id="panel-resumen" class="panel">
+      <div class="card">
+        <div class="card-title">📅 Resumen Diario</div>
+        <div class="table-wrap">
+          <table id="tablaResumenDiario"><thead><tr><th>Fecha</th><th>Ingresos</th><th>Inversión vendida</th><th>Ganancia</th><th>Acumulada</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESTADÍSTICAS -->
+    <div id="panel-estadisticas" class="panel">
+      <div class="stats-grid">
+        <div class="stats-card">
+          <h4>🔥 Top productos más vendidos</h4>
+          <div class="stats-period">
+            <button class="stats-period-btn" data-stats="top-cantidad" data-period="dia">Hoy</button>
+            <button class="stats-period-btn" data-stats="top-cantidad" data-period="mes">Este mes</button>
+            <button class="stats-period-btn active" data-stats="top-cantidad" data-period="año">Este año</button>
+          </div>
+          <ul class="stats-list" id="topVendidosList"></ul>
+        </div>
+        <div class="stats-card">
+          <h4>💰 Top productos por ganancia</h4>
+          <div class="stats-period">
+            <button class="stats-period-btn" data-stats="top-ganancia" data-period="dia">Hoy</button>
+            <button class="stats-period-btn" data-stats="top-ganancia" data-period="mes">Este mes</button>
+            <button class="stats-period-btn active" data-stats="top-ganancia" data-period="año">Este año</button>
+          </div>
+          <ul class="stats-list" id="topGananciaList"></ul>
+        </div>
+        <div class="stats-card">
+          <h4>📈 Resumen de ventas</h4>
+          <ul class="stats-list">
+            <li><span>Total ventas (año):</span><span id="statsTotalVentas">0</span></li>
+            <li><span>Productos distintos vendidos:</span><span id="statsProductosUnicos">0</span></li>
+            <li><span>Ticket promedio:</span><span id="statsTicketPromedio">0 CUP</span></li>
+            <li><span>Margen ganancia promedio:</span><span id="statsMargenPromedio">0%</span></li>
+          </ul>
+        </div>
+        <div class="stats-card">
+          <h4>⏱️ Hora pico de ventas</h4>
+          <ul class="stats-list" id="horaPicoList"></ul>
+        </div>
+        <div class="stats-card">
+          <h4>📊 Método de pago preferido</h4>
+          <ul class="stats-list" id="metodoPagoList"></ul>
+        </div>
+      </div>
+      <div class="acerca-creador">
+        <h3>👨‍💻 Ingeniero Espinosa</h3>
+        <p>Desarrollo y Soluciones Tecnológicas</p>
+        <p style="font-size:0.7rem; margin-top:8px;">Sistema de Gestión Negocio Pro v2</p>
+        <div class="version">© 2024 - Todos los derechos reservados</div>
+      </div>
+    </div>
+
+    <!-- DATOS -->
+    <div id="panel-datos" class="panel">
+      <div class="card">
+        <div class="card-title">🗄️ Base de Datos Local (.db)</div>
+        <div class="action-bar">
+          <button class="btn btn-primary" id="btnExportarDB">💾 Exportar copia (.db)</button>
+          <button class="btn btn-danger" id="btnImportarDB">📂 Restaurar copia (.db)</button>
+          <button class="btn btn-amber" id="btnNuevoNegocio">🆕 Nuevo negocio (vacío)</button>
+        </div>
+        <input type="file" id="archivoImportarDB" accept=".db" style="display:none">
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Excel / CSV</div>
+        <div class="action-bar">
+          <button class="btn btn-success" id="btnExportarExcel">📤 Exportar a Excel</button>
+          <button class="btn btn-navy" id="btnImportarExcel">📊 Importar desde Excel</button>
+        </div>
+        <input type="file" id="archivoImportarExcel" accept=".xlsx,.xls,.csv" style="display:none">
+        <p style="font-size:0.75rem;color:var(--muted);margin-top:10px">Formato soportado: Hojas Compras, Ventas, Caja, Socios, Configuracion. Las ventas y compras del mismo día se procesan cronológicamente.</p>
+      </div>
+      <div class="drive-section">
+        <h4>☁️ Google Drive</h4>
+        <p style="font-size:0.75rem;color:var(--muted);margin-bottom:10px">Requiere configurar un Client ID de Google Cloud Console. Ve a la pestaña ⚙️ Configuración para ingresar tu Client ID.</p>
+        <div class="action-bar">
+          <button class="btn btn-primary btn-sm" id="btnExportarDBDrive">☁️ Exportar DB a Drive</button>
+          <button class="btn btn-navy btn-sm" id="btnImportarDBDrive">☁️ Importar DB desde Drive</button>
+          <button class="btn btn-success btn-sm" id="btnExportarExcelDrive">☁️ Exportar Excel a Drive</button>
+        </div>
+        <div id="driveStatus" style="font-size:0.75rem;margin-top:8px;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <!-- CONFIGURACIÓN -->
+    <div id="panel-config" class="panel">
+      <div class="card">
+        <div class="card-title">📱 Transfermóvil (para QR de cobro)</div>
+        <div class="config-group">
+          <label>Número de tarjeta (obligatorio)</label>
+          <input type="text" id="cfgTarjeta" placeholder="9225XXXXXXXXXXXX" inputmode="numeric" maxlength="16" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+          <div class="config-hint">Número de la tarjeta bancaria (16 dígitos numéricos).</div>
+        </div>
+        <div class="config-group">
+          <label>Número de celular (opcional)</label>
+          <input type="text" id="cfgCelular" placeholder="51234567" inputmode="numeric" maxlength="8" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+          <div class="config-hint">Celular de confirmación (8 dígitos, sin +53).</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📱 EnZona (para QR de cobro)</div>
+        <div class="config-group">
+          <label>Código QR fijo de EnZona (obligatorio)</label>
+          <input type="text" id="cfgEnzona" placeholder="Pega aquí el contenido de tu QR EnZona">
+          <div class="config-hint">Este es el texto/URL contenido en tu QR fijo de EnZona. Lo encontrarás en la app EnZona → Mi código QR.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">☁️ Google Drive</div>
+        <div class="config-group">
+          <label>Google OAuth Client ID</label>
+          <input type="text" id="cfgGoogleClientId" placeholder="XXXXXXXX.apps.googleusercontent.com">
+          <div class="config-hint">Obtén tu Client ID en Google Cloud Console → APIs y servicios → Credenciales. Ver instrucciones en la pestaña Ayuda.</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btnGuardarConfig">💾 Guardar configuración</button>
+    </div>
+
+    <!-- AYUDA -->
+    <div id="panel-ayuda" class="panel">
+      <div class="card">
+        <div class="card-title">📘 Cómo usar el sistema</div>
+        <div style="font-size:0.82rem;line-height:1.7;color:var(--text)">
+          <p><strong>📦 Inventario:</strong> Muestra el stock, precio promedio, precio de referencia y ganancia potencial.</p>
+          <hr class="section-divider">
+          <p><strong>🛒 Comprar:</strong> Si el saldo es insuficiente, se te preguntará si registrar la compra como Aporte de capital.</p>
+          <p><strong>💵 Vender:</strong> Agrega productos al carrito, elige el método de pago. Si es Transfermóvil o EnZona, se genera un QR y debes confirmar el pago antes de registrar.</p>
+          <p><strong>💼 Caja:</strong> La Apertura de Capital solo se puede registrar una vez. Incluye nuevos tipos: Aporte, Venta en efectivo, Transferencia recibida.</p>
+          <p><strong>👥 Socios:</strong> Total de porcentajes no puede superar 100%.</p>
+          <hr class="section-divider">
+          <p><strong>📊 Dashboard:</strong></p>
+          <ul style="margin-left:20px;margin-top:6px">
+            <li><strong>Caja actual</strong>: saldo total (efectivo + transferencias)</li>
+            <li><strong>Efectivo en caja</strong>: solo ventas en efectivo</li>
+            <li><strong>Transferencias</strong>: suma de transferencias recibidas</li>
+          </ul>
+          <hr class="section-divider">
+          <p><strong>📊 Formato Excel para importar:</strong></p>
+          <ul style="margin-left:20px;margin-top:8px">
+            <li><strong>Hoja: Compras</strong> — Fecha, Producto, Cantidad, PrecioUnitario</li>
+            <li><strong>Hoja: Ventas</strong> — Fecha, Producto, Cantidad, PrecioVenta, MetodoPago (opcional)</li>
+            <li><strong>Hoja: Caja</strong> — Fecha, Tipo, Concepto, Socio, Entrada, Salida</li>
+            <li><strong>Hoja: Socios</strong> — Nombre, Porcentaje (opcional)</li>
+            <li><strong>Hoja: Configuracion</strong> — Clave, Valor (opcional)</li>
+          </ul>
+          <hr class="section-divider">
+          <p><strong>☁️ Google Drive — Cómo obtener el Client ID:</strong></p>
+          <ol style="margin-left:20px;margin-top:8px;line-height:2">
+            <li>Ve a <strong>console.cloud.google.com</strong></li>
+            <li>Crea un proyecto nuevo o selecciona uno existente</li>
+            <li>Ve a <strong>APIs y servicios → Biblioteca</strong> y habilita <strong>Google Drive API</strong></li>
+            <li>Ve a <strong>APIs y servicios → Credenciales → Crear credenciales → ID de cliente OAuth 2.0</strong></li>
+            <li>Tipo de aplicación: <strong>Aplicación web</strong></li>
+            <li>En "Orígenes de JavaScript autorizados" agrega la URL donde usas este sistema (ej: <code>file://</code> o tu dominio)</li>
+            <li>Copia el <strong>Client ID</strong> y pégalo en la pestaña ⚙️ Configuración</li>
+            <li>En "Pantalla de consentimiento OAuth" agrega tu email como usuario de prueba</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL QR PAGO -->
+<div class="modal-overlay" id="modalQR">
+  <div class="modal-box">
+    <div class="modal-title" id="modalQRTitulo">📱 Pago por transferencia</div>
+    <div class="modal-info" id="modalQRInfo"></div>
+    <div id="qrCanvas"></div>
+    <div style="text-align:center;font-size:0.75rem;color:var(--muted);margin-top:-8px" id="qrTextoInfo"></div>
+    <div class="modal-btns">
+      <button class="btn btn-success" id="btnConfirmarPago">✅ Confirmar pago</button>
+      <button class="btn btn-ghost" id="btnCancelarPago">❌ Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL APORTE -->
+<div class="modal-overlay aporte-modal" id="modalAporte">
+  <div class="modal-box">
+    <div class="modal-title">💰 Saldo insuficiente</div>
+    <div class="modal-info" id="modalAporteInfo"></div>
+    <p style="font-size:0.82rem;margin-top:10px">¿Registrar esta compra como <strong>Aporte de capital</strong>?</p>
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn btn-amber" id="btnConfirmarAporte">✅ Sí, registrar aporte</button>
+      <button class="btn btn-ghost" id="btnCancelarAporte">❌ Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ════════════════════════════════════════════════
+let db = null;
+let chart = null;
+let productos = [];
+let carrito = []; // [{prod, cant, precio}]
+let metodoPagoSeleccionado = 'efectivo';
+let pendienteCompra = null; // datos de compra pendiente de confirmar aporte
+
+// ════════════════════════════════════════════════
+// UTILIDADES
+// ════════════════════════════════════════════════
+function mostrarMsg(texto, esError = false) {
+  let msg = document.getElementById("statusMsg");
+  msg.textContent = texto;
+  msg.className = esError ? "error" : "success";
+  msg.style.display = "block";
+  clearTimeout(msg._t);
+  msg._t = setTimeout(() => msg.style.display = "none", 4500);
+}
+
+function hoy() { return new Date().toISOString().split('T')[0]; }
+function setHoy(id) { let el = document.getElementById(id); if (el && !el.value) el.value = hoy(); }
+
+function convertirFechaExcel(valor) {
+  if (!valor) return "";
+  if (typeof valor === 'string') return valor;
+  if (typeof valor === 'number') {
+    let fecha = new Date((valor - 25569) * 86400000);
+    return fecha.toISOString().split('T')[0];
+  }
+  return valor;
+}
+
+function soloNumeros(e) {
+  let allowed = ['0','1','2','3','4','5','6','7','8','9','.','Backspace','Delete','ArrowLeft','ArrowRight','Tab','-'];
+  if (!allowed.includes(e.key)) e.preventDefault();
+}
+
+// ════════════════════════════════════════════════
+// BASE DE DATOS
+// ════════════════════════════════════════════════
+async function initDB(dataBinario) {
+  const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
+  db = new SQL.Database(dataBinario);
+  return db;
+}
+
+function crearEstructuraVacia() {
+  db.run("CREATE TABLE IF NOT EXISTS productos (nombre TEXT PRIMARY KEY, precio_venta_ref REAL)");
+  db.run("CREATE TABLE IF NOT EXISTS compras (id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT, producto TEXT, cantidad REAL, precio_unit REAL)");
+  db.run("CREATE TABLE IF NOT EXISTS ventas (id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT, producto TEXT, cantidad REAL, precio_venta REAL, metodo_pago TEXT DEFAULT 'Efectivo')");
+  db.run("CREATE TABLE IF NOT EXISTS caja (id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT, tipo TEXT, concepto TEXT, socio TEXT, entrada REAL, salida REAL, transferencia REAL DEFAULT 0)");
+  try { db.run("ALTER TABLE caja ADD COLUMN transferencia REAL DEFAULT 0"); } catch(e) {}
+  db.run("CREATE TABLE IF NOT EXISTS socios (nombre TEXT PRIMARY KEY, porcentaje REAL)");
+  db.run("CREATE TABLE IF NOT EXISTS configuracion (clave TEXT PRIMARY KEY, valor TEXT)");
+}
+
+function limpiarTablas() {
+  ["productos","compras","ventas","caja","socios","configuracion"].forEach(t => db.run(`DELETE FROM ${t}`));
+}
+
+function guardarDB() {
+  const data = db.export();
+  localStorage.setItem("sqlite_db", JSON.stringify(Array.from(data)));
+}
+
+async function recargarDesdeDB() {
+  let data = localStorage.getItem("sqlite_db");
+  if (data) {
+    await initDB(new Uint8Array(JSON.parse(data)));
+    crearEstructuraVacia();
+  } else {
+    await initDB();
+    crearEstructuraVacia();
+  }
+  actualizarTodo();
+}
+
+function asegurarProducto(nombre) {
+  let existe = db.exec("SELECT nombre FROM productos WHERE nombre=?", [nombre]);
+  if (!existe[0] || existe[0].values.length === 0) db.run("INSERT INTO productos VALUES (?,?)", [nombre, null]);
+}
+
+// Config helpers
+function getConfig(clave) {
+  let r = db.exec("SELECT valor FROM configuracion WHERE clave=?", [clave]);
+  return r[0]?.values[0]?.[0] || "";
+}
+function setConfig(clave, valor) {
+  db.run("INSERT OR REPLACE INTO configuracion (clave, valor) VALUES (?,?)", [clave, valor]);
+}
+
+// ════════════════════════════════════════════════
+// CÁLCULOS
+// ════════════════════════════════════════════════
+function calcularPrecioPromedio(fecha, prod) {
+  let comprasAntes = db.exec("SELECT cantidad, precio_unit FROM compras WHERE producto=? AND fecha<=? ORDER BY fecha", [prod, fecha]);
+  let cant = 0, val = 0;
+  for (let c of comprasAntes[0]?.values || []) { cant += c[0]; val += c[0] * c[1]; }
+  return cant > 0 ? val / cant : 0;
+}
+
+function obtenerPrecioReferencia(producto) {
+  let r = db.exec("SELECT precio_venta_ref FROM productos WHERE nombre=?", [producto]);
+  let val = r[0]?.values[0][0];
+  if (!val || val === 0) {
+    let ult = db.exec("SELECT precio_venta FROM ventas WHERE producto=? ORDER BY fecha DESC LIMIT 1", [producto]);
+    if (ult[0]?.values.length > 0) val = ult[0].values[0][0];
+  }
+  return parseFloat(val) || 0;
+}
+
+function calcularSaldoCaja() {
+  // entrada incluye efectivo; transferencia es la parte de aportes en transferencia; salida son egresos
+  let movs = db.exec("SELECT entrada, salida, COALESCE(transferencia,0) FROM caja");
+  let saldo = 0;
+  for (let m of movs[0]?.values || []) saldo += m[0] + m[2] - m[1];
+  return saldo;
+}
+
+function calcularEfectivoCaja() {
+  // Entradas de efectivo: ventas efectivo + entrada de Apertura/Aporte/Deposito (sin su parte de transferencia)
+  let r = db.exec("SELECT SUM(entrada), SUM(salida), SUM(COALESCE(transferencia,0)) FROM caja WHERE tipo IN ('Venta en efectivo','Apertura','Aporte','Deposito','Gasto','Compra','Retiro socio')");
+  let ent = r[0]?.values[0][0] || 0;
+  let sal = r[0]?.values[0][1] || 0;
+  let trans = r[0]?.values[0][2] || 0; // parte de transferencia dentro de esos registros
+  return (ent - trans) - sal;
+}
+
+function calcularTransferencias() {
+  // Transferencias de ventas
+  let r1 = db.exec("SELECT SUM(entrada), COUNT(*) FROM caja WHERE tipo='Transferencia recibida'");
+  let sumaVentas = r1[0]?.values[0][0] || 0;
+  let numVentas = r1[0]?.values[0][1] || 0;
+  // Transferencias en Apertura/Aporte (campo transferencia)
+  let r2 = db.exec("SELECT SUM(COALESCE(transferencia,0)), COUNT(*) FROM caja WHERE tipo IN ('Apertura','Aporte') AND COALESCE(transferencia,0) > 0");
+  let sumaAportes = r2[0]?.values[0][0] || 0;
+  let numAportes = r2[0]?.values[0][1] || 0;
+  let suma = sumaVentas + sumaAportes;
+  let num = numVentas + numAportes;
+  return { suma, num };
+}
+
+function calcularStockProducto(prod) {
+  let compras = db.exec("SELECT SUM(cantidad) FROM compras WHERE producto=?", [prod]);
+  let ventas = db.exec("SELECT SUM(cantidad) FROM ventas WHERE producto=?", [prod]);
+  return Math.max(0, (compras[0]?.values[0][0] || 0) - (ventas[0]?.values[0][0] || 0));
+}
+
+function tieneApertura() {
+  let r = db.exec("SELECT COUNT(*) FROM caja WHERE tipo='Apertura'");
+  return (r[0]?.values[0][0] || 0) > 0;
+}
+
+function ultimaCompraProducto(prod) {
+  let r = db.exec("SELECT precio_unit FROM compras WHERE producto=? ORDER BY fecha DESC, id DESC LIMIT 1", [prod]);
+  return r[0]?.values[0][0] ?? null;
+}
+
+function ultimaVentaProducto(prod) {
+  let r = db.exec("SELECT precio_venta FROM ventas WHERE producto=? ORDER BY fecha DESC, id DESC LIMIT 1", [prod]);
+  return r[0]?.values[0][0] ?? null;
+}
+
+function totalPorcentajeSocios() {
+  let r = db.exec("SELECT SUM(porcentaje) FROM socios");
+  return parseFloat(r[0]?.values[0][0] || 0);
+}
+
+// ════════════════════════════════════════════════
+// CARRITO
+// ════════════════════════════════════════════════
+function totalCarrito() {
+  return carrito.reduce((s, i) => s + i.cant * i.precio, 0);
+}
+
+function renderCarrito() {
+  let container = document.getElementById("carritoItems");
+  let totalEl = document.getElementById("carritoTotal");
+  let totalMonto = document.getElementById("carritoTotalMonto");
+
+  if (carrito.length === 0) {
+    container.innerHTML = '<p style="color:var(--muted);font-size:0.78rem;text-align:center;padding:10px">Sin productos aún</p>';
+    totalEl.style.display = 'none';
+    return;
+  }
+  container.innerHTML = carrito.map((item, idx) => `
+    <div class="carrito-item">
+      <span>${item.cant} × <strong>${item.prod}</strong> @ ${item.precio.toFixed(2)}</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <strong style="font-family:'JetBrains Mono',monospace">${(item.cant * item.precio).toFixed(2)}</strong>
+        <button onclick="quitarDelCarrito(${idx})" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:1rem">✕</button>
+      </span>
+    </div>
+  `).join('');
+  totalEl.style.display = 'flex';
+  totalMonto.textContent = totalCarrito().toFixed(2) + ' CUP';
+}
+
+function quitarDelCarrito(idx) {
+  carrito.splice(idx, 1);
+  renderCarrito();
+}
+
+// ════════════════════════════════════════════════
+// ACTUALIZAR UI
+// ════════════════════════════════════════════════
+async function actualizarTodo() {
+  let result = db.exec("SELECT nombre FROM productos");
+  productos = result[0]?.values.map(r => r[0]) || [];
+  actualizarSelectores();
+  actualizarDashboard();
+  actualizarTablas();
+  actualizarSocios();
+  actualizarResumenDiario();
+  actualizarEstadisticas();
+  actualizarHintsCompra();
+  actualizarHintsVenta();
+  actualizarHintsCaja();
+  actualizarHintsSocios();
+  cargarConfigUI();
+  document.getElementById("topbarCaja").textContent = "Caja: " + calcularSaldoCaja().toFixed(2) + " CUP";
+}
+
+function actualizarSelectores() {
+  let selectCompra = document.getElementById("compraProducto");
+  let selectVenta = document.getElementById("ventaProducto");
+  let prev_c = selectCompra.value;
+  let prev_v = selectVenta.value;
+  selectCompra.innerHTML = productos.map(p => `<option value="${p}">${p}</option>`).join('');
+  selectVenta.innerHTML = productos.map(p => `<option value="${p}">${p}</option>`).join('');
+  if (prev_c && productos.includes(prev_c)) selectCompra.value = prev_c;
+  if (prev_v && productos.includes(prev_v)) selectVenta.value = prev_v;
+  cargarUltimaCompra();
+  cargarUltimaVenta();
+}
+
+function actualizarDashboard() {
+  let stock = {}, precioProm = {};
+  productos.forEach(p => { stock[p] = 0; precioProm[p] = 0; });
+  let compras = db.exec("SELECT producto, cantidad, precio_unit FROM compras ORDER BY fecha");
+  for (let c of compras[0]?.values || []) {
+    let total = stock[c[0]] * precioProm[c[0]] + c[1] * c[2];
+    let cantTotal = stock[c[0]] + c[1];
+    precioProm[c[0]] = cantTotal > 0 ? total / cantTotal : 0;
+    stock[c[0]] = cantTotal;
+  }
+  let ventas = db.exec("SELECT producto, cantidad FROM ventas");
+  for (let v of ventas[0]?.values || []) stock[v[0]] = Math.max(0, stock[v[0]] - v[1]);
+  let ingresoTotal = 0, costoTotal = 0;
+  let ventasList = db.exec("SELECT fecha, producto, cantidad, precio_venta FROM ventas");
+  for (let v of ventasList[0]?.values || []) {
+    ingresoTotal += v[2] * v[3];
+    costoTotal += v[2] * calcularPrecioPromedio(v[0], v[1]);
+  }
+  let gananciaReal = ingresoTotal - costoTotal;
+  let inversionInv = 0, gananciaPot = 0;
+  for (let p of productos) {
+    inversionInv += stock[p] * precioProm[p];
+    let ref = obtenerPrecioReferencia(p);
+    gananciaPot += stock[p] * (ref - precioProm[p]);
+  }
+  let saldo = calcularSaldoCaja();
+  let trans = calcularTransferencias();
+  let efectivo = saldo - trans.suma;
+
+  let elCaja = document.getElementById("cajaActual");
+  elCaja.textContent = saldo.toFixed(2) + " CUP";
+  elCaja.className = "kpi-value " + (saldo >= 0 ? "positive" : "negative");
+
+  document.getElementById("efectivoCaja").textContent = efectivo.toFixed(2) + " CUP";
+  document.getElementById("transferenciasCaja").textContent = trans.suma.toFixed(2) + " CUP";
+  document.getElementById("numTransferencias").textContent = trans.num;
+  document.getElementById("ingresoTotal").textContent = ingresoTotal.toFixed(2);
+  let elGan = document.getElementById("gananciaTotal");
+  elGan.textContent = gananciaReal.toFixed(2);
+  elGan.className = "kpi-value " + (gananciaReal >= 0 ? "positive" : "negative");
+  document.getElementById("inversionInventario").textContent = inversionInv.toFixed(2);
+  document.getElementById("gananciaPotencial").textContent = gananciaPot.toFixed(2);
+}
+
+function actualizarTablas() {
+  let stock = {}, precioProm = {};
+  productos.forEach(p => { stock[p] = 0; precioProm[p] = 0; });
+  let comprasAll = db.exec("SELECT fecha, producto, cantidad, precio_unit FROM compras ORDER BY fecha");
+  for (let c of comprasAll[0]?.values || []) {
+    let total = stock[c[1]] * precioProm[c[1]] + c[2] * c[3];
+    let cantTotal = stock[c[1]] + c[2];
+    precioProm[c[1]] = cantTotal > 0 ? total / cantTotal : 0;
+    stock[c[1]] = cantTotal;
+  }
+  let ventasList2 = db.exec("SELECT producto, cantidad FROM ventas");
+  for (let v of ventasList2[0]?.values || []) stock[v[0]] = Math.max(0, stock[v[0]] - v[1]);
+
+  let tbodyInv = document.querySelector("#tablaInventario tbody");
+  tbodyInv.innerHTML = "";
+  for (let p of productos) {
+    let ref = obtenerPrecioReferencia(p);
+    let ganPot = stock[p] * (ref - precioProm[p]);
+    let alerta = stock[p] <= 5
+      ? `<span class="badge badge-red">⚠️ Reabastecer</span>`
+      : `<span class="badge badge-green">✓ OK</span>`;
+    tbodyInv.innerHTML += `<tr>
+      <td><strong>${p}</strong></td>
+      <td>${stock[p]}</td>
+      <td>${precioProm[p].toFixed(2)}</td>
+      <td>${(stock[p] * precioProm[p]).toFixed(2)}</td>
+      <td><input type="number" data-prod="${p}" class="ref-precio" value="${ref}" style="width:90px;padding:5px 8px;border-radius:8px;border:1px solid var(--border)"></td>
+      <td class="${ganPot >= 0 ? 'positive' : 'negative'}">${ganPot.toFixed(2)}</td>
+      <td>${alerta}</td>
+    </tr>`;
+  }
+  document.querySelectorAll('.ref-precio').forEach(inp => inp.addEventListener('change', () => {
+    db.run("UPDATE productos SET precio_venta_ref=? WHERE nombre=?", [parseFloat(inp.value), inp.getAttribute('data-prod')]);
+    guardarDB(); actualizarTodo();
+  }));
+
+  let comprasBody = document.querySelector("#tablaCompras tbody");
+  comprasBody.innerHTML = "";
+  for (let c of comprasAll[0]?.values || [])
+    comprasBody.innerHTML += `<tr><td>${c[0]}</td><td>${c[1]}</td><td>${c[2]}</td><td>${c[3]}</td><td>${(c[2]*c[3]).toFixed(2)}</td></tr>`;
+
+  let ventasBody = document.querySelector("#tablaVentas tbody");
+  ventasBody.innerHTML = "";
+  let ventasAll = db.exec("SELECT fecha, producto, cantidad, precio_venta, metodo_pago FROM ventas ORDER BY fecha");
+  for (let v of ventasAll[0]?.values || []) {
+    let costo = v[2] * calcularPrecioPromedio(v[0], v[1]);
+    let ing = v[2] * v[3];
+    let gan = ing - costo;
+    let metodo = v[4] || 'Efectivo';
+    let badgeClase = metodo === 'Efectivo' ? 'badge-green' : 'badge-purple';
+    ventasBody.innerHTML += `<tr>
+      <td>${v[0]}</td><td>${v[1]}</td><td>${v[2]}</td><td>${v[3]}</td>
+      <td>${ing.toFixed(2)}</td><td>${costo.toFixed(2)}</td>
+      <td class="${gan >= 0 ? 'positive' : 'negative'}">${gan.toFixed(2)}</td>
+      <td><span class="badge ${badgeClase}">${metodo}</span></td>
+    </tr>`;
+  }
+
+  let cajaBody = document.querySelector("#tablaCaja tbody");
+  cajaBody.innerHTML = "";
+  let movs = db.exec("SELECT fecha, tipo, concepto, socio, entrada, salida, COALESCE(transferencia,0) FROM caja ORDER BY fecha, id");
+  let saldo = 0;
+  for (let m of movs[0]?.values || []) {
+    let efectivoMov = m[4];  // campo entrada = efectivo
+    let transfMov   = m[6];  // campo transferencia
+    let salidaMov   = m[5];
+    // Para ventas por transferencia: la entrada ya viene como transferencia recibida
+    // Para Apertura/Aporte: efectivo = entrada - transferencia (ya separados al guardar)
+    let efectivoShow = (m[1] === 'Transferencia recibida') ? 0 : efectivoMov;
+    let transfShow   = (m[1] === 'Transferencia recibida') ? efectivoMov : transfMov;
+    saldo += efectivoShow + transfShow - salidaMov;
+    let tipoBadge = m[1] === 'Apertura'
+      ? `<span class="apertura-badge">${m[1]}</span>`
+      : m[1] === 'Transferencia recibida'
+      ? `<span class="badge badge-purple">${m[1]}</span>`
+      : m[1] === 'Aporte'
+      ? `<span class="badge badge-amber">${m[1]}</span>`
+      : `<span class="badge badge-blue">${m[1]}</span>`;
+    cajaBody.innerHTML += `<tr>
+      <td>${m[0]}</td><td>${tipoBadge}</td><td>${m[2]}</td><td>${m[3] || ''}</td>
+      <td class="${efectivoShow > 0 ? 'positive' : ''}">${efectivoShow > 0 ? efectivoShow.toFixed(2) : '—'}</td>
+      <td class="${transfShow > 0 ? 'positive' : ''}" style="color:var(--purple)">${transfShow > 0 ? transfShow.toFixed(2) : '—'}</td>
+      <td class="${salidaMov > 0 ? 'negative' : ''}">${salidaMov > 0 ? salidaMov.toFixed(2) : '—'}</td>
+      <td><strong>${saldo.toFixed(2)}</strong></td>
+    </tr>`;
+  }
+}
+
+function actualizarSocios() {
+  let sociosList = db.exec("SELECT nombre, porcentaje FROM socios");
+  let ventasAll = db.exec("SELECT fecha, producto, cantidad, precio_venta FROM ventas");
+  let ingresoTotal = 0, costoTotal = 0;
+  for (let v of ventasAll[0]?.values || []) {
+    ingresoTotal += v[2] * v[3];
+    costoTotal += v[2] * calcularPrecioPromedio(v[0], v[1]);
+  }
+  let gananciaReal = ingresoTotal - costoTotal;
+  let retiros = {};
+  let retirosDB = db.exec("SELECT socio, salida FROM caja WHERE tipo='Retiro socio' AND socio != ''");
+  for (let r of retirosDB[0]?.values || []) if (r[0]) retiros[r[0]] = (retiros[r[0]] || 0) + r[1];
+
+  let tbody = document.querySelector("#tablaSocios tbody");
+  tbody.innerHTML = "";
+  for (let s of sociosList[0]?.values || []) {
+    let gananciaSocio = gananciaReal * (s[1] / 100);
+    let retirado = retiros[s[0]] || 0;
+    let disponible = gananciaSocio - retirado;
+    tbody.innerHTML += `<tr>
+      <td><strong>${s[0]}</strong></td>
+      <td>
+        <input type="number" class="editar-porcentaje" data-nombre="${s[0]}" value="${s[1]}" min="0" max="100" step="0.01" style="width:75px;padding:5px 8px;border-radius:8px;border:1px solid var(--border)">%
+        <div class="field-hint editar-pct-hint" id="hint_${s[0].replace(/\s/g,'_')}"></div>
+      </td>
+      <td class="${gananciaSocio >= 0 ? 'positive' : ''}">${gananciaSocio.toFixed(2)}</td>
+      <td>${retirado.toFixed(2)}</td>
+      <td class="${disponible >= 0 ? 'positive' : 'negative'}">${disponible.toFixed(2)}</td>
+      <td><button class="btn btn-danger btn-sm btn-eliminar-socio" data-nombre="${s[0]}">🗑️</button></td>
+    </tr>`;
+  }
+
+  // Agregar fila de la empresa si el total no es 100%
+  let totalPorc = totalPorcentajeSocios();
+  if (totalPorc < 100) {
+    let porcentajeEmpresa = 100 - totalPorc;
+    let gananciaEmpresa = gananciaReal * (porcentajeEmpresa / 100);
+    let retiradoEmpresa = retiros["EMPRESA"] || 0;
+    let disponibleEmpresa = gananciaEmpresa - retiradoEmpresa;
+    tbody.innerHTML += `<tr>
+      <td><strong>🏢 EMPRESA (Fondo)</strong></td>
+      <td><strong>${porcentajeEmpresa.toFixed(2)}%</strong></td>
+      <td class="${gananciaEmpresa >= 0 ? 'positive' : ''}">${gananciaEmpresa.toFixed(2)}</td>
+      <td>${retiradoEmpresa.toFixed(2)}</td>
+      <td class="${disponibleEmpresa >= 0 ? 'positive' : 'negative'}">${disponibleEmpresa.toFixed(2)}</td>
+      <td>—</td>
+    </tr>`;
+  }
+
+  document.querySelectorAll('.editar-porcentaje').forEach(inp => {
+    inp.addEventListener('input', () => validarEdicionPorcentaje(inp));
+    inp.addEventListener('change', () => {
+      let nombre = inp.getAttribute('data-nombre');
+      let nuevoPorc = parseFloat(inp.value);
+      if (isNaN(nuevoPorc) || nuevoPorc < 0) { mostrarMsg("Porcentaje inválido", true); return; }
+      let otros = db.exec("SELECT SUM(porcentaje) FROM socios WHERE nombre != ?", [nombre]);
+      let totalOtros = parseFloat(otros[0]?.values[0][0] || 0);
+      if (totalOtros + nuevoPorc > 100) { mostrarMsg(`No se puede. Superaría 100%`, true); inp.classList.add('input-error'); return; }
+      db.run("UPDATE socios SET porcentaje=? WHERE nombre=?", [nuevoPorc, nombre]);
+      guardarDB(); actualizarSocios();
+      mostrarMsg(`${nombre}: ${nuevoPorc}%`, false);
+    });
+  });
+
+  document.querySelectorAll('.btn-eliminar-socio').forEach(btn => btn.addEventListener('click', () => {
+    let nombre = btn.getAttribute('data-nombre');
+    if (confirm(`¿Eliminar socio ${nombre}?`)) {
+      db.run("DELETE FROM socios WHERE nombre=?", [nombre]);
+      guardarDB(); actualizarSocios();
+      mostrarMsg(`Socio ${nombre} eliminado`, false);
+    }
+  }));
+
+  let histBody = document.querySelector("#tablaHistorialRetiros tbody");
+  histBody.innerHTML = "";
+  let retirosHist = db.exec("SELECT fecha, socio, salida FROM caja WHERE tipo='Retiro socio' AND socio != '' ORDER BY fecha");
+  for (let r of retirosHist[0]?.values || [])
+    histBody.innerHTML += `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2].toFixed(2)}</td></tr>`;
+
+  let selectSocio = document.getElementById("movSocio");
+  selectSocio.innerHTML = "<option value=''></option>" + (sociosList[0]?.values || []).map(s => `<option>${s[0]}</option>`).join('');
+  actualizarHintsSocios();
+}
+
+function actualizarResumenDiario() {
+  let ventasAll = db.exec("SELECT fecha, producto, cantidad, precio_venta FROM ventas ORDER BY fecha");
+  let fechas = [...new Set((ventasAll[0]?.values || []).map(v => v[0]))];
+  let resumen = [];
+  let acum = 0;
+  for (let f of fechas) {
+    let ing = 0, inv = 0;
+    for (let v of ventasAll[0]?.values || []) {
+      if (v[0] === f) { ing += v[2] * v[3]; inv += v[2] * calcularPrecioPromedio(v[0], v[1]); }
+    }
+    let gan = ing - inv;
+    acum += gan;
+    resumen.push({ fecha: f, ingreso: ing, inversion: inv, ganancia: gan, acumulado: acum });
+  }
+  let tbody = document.querySelector("#tablaResumenDiario tbody");
+  tbody.innerHTML = "";
+  for (let r of resumen)
+    tbody.innerHTML += `<tr><td>${r.fecha}</td><td>${r.ingreso.toFixed(2)}</td><td>${r.inversion.toFixed(2)}</td><td class="${r.ganancia>=0?'positive':'negative'}">${r.ganancia.toFixed(2)}</td><td>${r.acumulado.toFixed(2)}</td></tr>`;
+
+  if (chart) chart.destroy();
+  let ctx = document.getElementById('graficoGanancias').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: resumen.map(r => r.fecha),
+      datasets: [
+        { label: 'Ganancia diaria', data: resumen.map(r => r.ganancia), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', tension: 0.4, fill: true },
+        { label: 'Acumulada', data: resumen.map(r => r.acumulado), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.04)', tension: 0.4, fill: true, borderDash: [5,3] }
+      ]
+    },
+    options: { plugins: { legend: { display: true } }, scales: { y: { beginAtZero: false } } }
+  });
+}
+
+// ════════════════════════════════════════════════
+// ESTADÍSTICAS
+// ════════════════════════════════════════════════
+function obtenerRangoFecha(periodo) {
+  let hoy = new Date();
+  let inicio = new Date();
+  if (periodo === 'dia') {
+    inicio = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  } else if (periodo === 'mes') {
+    inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  } else if (periodo === 'año') {
+    inicio = new Date(hoy.getFullYear(), 0, 1);
+  }
+  return { inicio: inicio.toISOString().split('T')[0], fin: hoy.toISOString().split('T')[0] };
+}
+
+function actualizarEstadisticas() {
+  document.querySelectorAll('.stats-period-btn').forEach(btn => {
+    btn.removeEventListener('click', manejarCambioPeriodo);
+    btn.addEventListener('click', manejarCambioPeriodo);
+  });
+  cargarTopVendidos('año');
+  cargarTopGanancia('año');
+  cargarResumenGeneral();
+  cargarHoraPico();
+  cargarMetodoPago();
+}
+
+function manejarCambioPeriodo(e) {
+  let btn = e.target;
+  let statsType = btn.getAttribute('data-stats');
+  let periodo = btn.getAttribute('data-period');
+  document.querySelectorAll(`.stats-period-btn[data-stats="${statsType}"]`).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (statsType === 'top-cantidad') cargarTopVendidos(periodo);
+  if (statsType === 'top-ganancia') cargarTopGanancia(periodo);
+}
+
+function cargarTopVendidos(periodo) {
+  let { inicio, fin } = obtenerRangoFecha(periodo);
+  let ventas = db.exec("SELECT producto, SUM(cantidad) as total FROM ventas WHERE fecha BETWEEN ? AND ? GROUP BY producto ORDER BY total DESC LIMIT 5", [inicio, fin]);
+  let lista = document.getElementById("topVendidosList");
+  if (!ventas[0]?.values.length) {
+    lista.innerHTML = '<li style="text-align:center;color:var(--muted)">Sin datos</li>';
+    return;
+  }
+  lista.innerHTML = ventas[0].values.map((v, idx) => `
+    <li><span class="rank">${idx+1}</span><span class="name">${v[0]}</span><span class="value">${v[1]} uds</span></li>
+  `).join('');
+}
+
+function cargarTopGanancia(periodo) {
+  let { inicio, fin } = obtenerRangoFecha(periodo);
+  let ventas = db.exec("SELECT fecha, producto, cantidad, precio_venta FROM ventas WHERE fecha BETWEEN ? AND ?", [inicio, fin]);
+  let ganancias = {};
+  for (let v of ventas[0]?.values || []) {
+    let costo = v[2] * calcularPrecioPromedio(v[0], v[1]);
+    let ganancia = (v[2] * v[3]) - costo;
+    ganancias[v[1]] = (ganancias[v[1]] || 0) + ganancia;
+  }
+  let top = Object.entries(ganancias).sort((a,b) => b[1] - a[1]).slice(0,5);
+  let lista = document.getElementById("topGananciaList");
+  if (!top.length) {
+    lista.innerHTML = '<li style="text-align:center;color:var(--muted)">Sin datos</li>';
+    return;
+  }
+  lista.innerHTML = top.map(([prod, gan], idx) => `
+    <li><span class="rank">${idx+1}</span><span class="name">${prod}</span><span class="value ${gan>=0?'positive':'negative'}">${gan.toFixed(2)} CUP</span></li>
+  `).join('');
+}
+
+function cargarResumenGeneral() {
+  let { inicio, fin } = obtenerRangoFecha('año');
+  let ventas = db.exec("SELECT cantidad, precio_venta, fecha, producto FROM ventas WHERE fecha BETWEEN ? AND ?", [inicio, fin]);
+  let totalVentas = 0;
+  let productosSet = new Set();
+  let totalIngreso = 0;
+  let totalGanancia = 0;
+  
+  for (let v of ventas[0]?.values || []) {
+    let cantidad = v[0];
+    let precioVenta = v[1];
+    let fecha = v[2];
+    let producto = v[3];
+    
+    totalVentas += cantidad;
+    productosSet.add(producto);
+    totalIngreso += cantidad * precioVenta;
+    
+    // Calcular el costo de este producto en esa fecha específica
+    let costo = cantidad * calcularPrecioPromedio(fecha, producto);
+    totalGanancia += (cantidad * precioVenta) - costo;
+  }
+  
+  let ticketPromedio = totalVentas > 0 ? totalIngreso / totalVentas : 0;
+  let margenPromedio = totalIngreso > 0 ? (totalGanancia / totalIngreso) * 100 : 0;
+  
+  document.getElementById("statsTotalVentas").textContent = totalVentas;
+  document.getElementById("statsProductosUnicos").textContent = productosSet.size;
+  document.getElementById("statsTicketPromedio").textContent = (isNaN(ticketPromedio) ? 0 : ticketPromedio).toFixed(2) + " CUP";
+  document.getElementById("statsMargenPromedio").textContent = (isNaN(margenPromedio) ? 0 : margenPromedio).toFixed(1) + "%";
+}
+
+function cargarHoraPico() {
+  let lista = document.getElementById("horaPicoList");
+  lista.innerHTML = '<li style="text-align:center;color:var(--muted)">Registra ventas con hora para ver análisis</li>';
+}
+
+function cargarMetodoPago() {
+  let ventas = db.exec("SELECT metodo_pago, COUNT(*) as total FROM ventas GROUP BY metodo_pago");
+  let lista = document.getElementById("metodoPagoList");
+  if (!ventas[0]?.values.length) {
+    lista.innerHTML = '<li style="text-align:center;color:var(--muted)">Sin datos</li>';
+    return;
+  }
+  lista.innerHTML = ventas[0].values.map(v => `
+    <li><span>${v[0] || 'Efectivo'}</span><span class="value">${v[1]} ventas</span></li>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════
+// HINTS / VALIDACIONES
+// ════════════════════════════════════════════════
+function actualizarHintsCompra() {
+  let prod = document.getElementById("compraProducto").value;
+  let cant = parseFloat(document.getElementById("compraCantidad").value) || 0;
+  let precio = parseFloat(document.getElementById("compraPrecio").value) || 0;
+  let total = cant * precio;
+  let saldo = calcularSaldoCaja();
+  document.getElementById("compraTotal").textContent = total.toFixed(2);
+  let ult = prod ? ultimaCompraProducto(prod) : null;
+  let hPrecio = document.getElementById("compraPrecioHint");
+  hPrecio.textContent = ult !== null ? `Última compra: ${parseFloat(ult).toFixed(2)}` : "Sin compras anteriores";
+  hPrecio.className = "field-hint";
+  let hCaja = document.getElementById("cajaDisponibleHint");
+  if (total > 0) {
+    if (saldo < total) { hCaja.textContent = `⚠️ Saldo insuficiente (disponible: ${saldo.toFixed(2)})`; hCaja.className = "field-hint error"; }
+    else { hCaja.textContent = `✓ Saldo disponible: ${saldo.toFixed(2)}`; hCaja.className = "field-hint ok"; }
+  } else { hCaja.textContent = `Saldo disponible: ${saldo.toFixed(2)}`; hCaja.className = "field-hint"; }
+  let hCant = document.getElementById("compraCantidadHint");
+  if (cant <= 0 && document.getElementById("compraCantidad").value !== "") { hCant.textContent = "Debe ser mayor a 0"; hCant.className = "field-hint error"; }
+  else hCant.textContent = "";
+}
+
+function actualizarHintsVenta() {
+  let prod = document.getElementById("ventaProducto").value;
+  let cant = parseFloat(document.getElementById("ventaCantidad").value) || 0;
+  let precio = parseFloat(document.getElementById("ventaPrecioUnitario").value) || 0;
+  let total = cant * precio;
+  document.getElementById("ventaSubtotal").textContent = total.toFixed(2);
+  let ult = prod ? ultimaVentaProducto(prod) : null;
+  let hPrecio = document.getElementById("ventaPrecioHint");
+  hPrecio.textContent = ult !== null ? `Última venta: ${parseFloat(ult).toFixed(2)}` : "Sin ventas anteriores";
+  hPrecio.className = "field-hint";
+  let hStock = document.getElementById("ventaStockHint");
+  if (prod) {
+    let stockActual = calcularStockProducto(prod);
+    if (cant > stockActual) { hStock.textContent = `⚠️ Stock insuficiente (disponible: ${stockActual})`; hStock.className = "field-hint error"; }
+    else if (cant > 0) { hStock.textContent = `✓ Stock disponible: ${stockActual}`; hStock.className = "field-hint ok"; }
+    else { hStock.textContent = `Stock disponible: ${stockActual}`; hStock.className = "field-hint"; }
+  }
+}
+
+function actualizarHintsCaja() {
+  let tipo = document.getElementById("movTipo").value;
+  let hApertura = document.getElementById("aperturaHint");
+  if (tipo === "Apertura") {
+    if (tieneApertura()) { hApertura.textContent = "⚠️ Ya existe una apertura registrada"; hApertura.className = "field-hint warn"; }
+    else { hApertura.textContent = "✓ Primera apertura del negocio"; hApertura.className = "field-hint ok"; }
+  } else hApertura.textContent = "";
+}
+
+function actualizarHintsSocios() {
+  let total = totalPorcentajeSocios();
+  let disponible = 100 - total;
+  let bar = document.getElementById("pctBarFill");
+  bar.style.width = Math.min(total, 100) + "%";
+  bar.style.background = total > 100 ? "var(--red)" : total === 100 ? "var(--green)" : "var(--accent)";
+  document.getElementById("pctTotal").textContent = `Total socios: ${total.toFixed(2)}%`;
+  let pctDisp = document.getElementById("pctDisponible");
+  let pctAlerta = document.getElementById("pctAlerta");
+  if (total > 100) {
+    pctDisp.textContent = `⚠️ Excede en ${(total-100).toFixed(2)}%`;
+    pctDisp.style.color = "var(--red)";
+    pctAlerta.textContent = "❌ El total supera 100%.";
+    pctAlerta.className = "field-hint error";
+  } else if (disponible > 0) {
+    pctDisp.textContent = `Disponible empresa: ${disponible.toFixed(2)}%`;
+    pctDisp.style.color = "var(--green)";
+    pctAlerta.textContent = disponible < 100 ? `ℹ️ El ${disponible.toFixed(2)}% restante es fondo empresa.` : "";
+    pctAlerta.className = "field-hint";
+  } else {
+    pctDisp.textContent = "100% distribuido entre socios";
+    pctDisp.style.color = "var(--green)";
+    pctAlerta.textContent = "";
+  }
+  let nuevoPorcVal = parseFloat(document.getElementById("nuevoSocioPorc").value) || 0;
+  let hNuevo = document.getElementById("nuevoSocioPorcHint");
+  if (nuevoPorcVal > 0) {
+    if (total + nuevoPorcVal > 100) { hNuevo.textContent = `⚠️ Solo disponible: ${disponible.toFixed(2)}%`; hNuevo.className = "field-hint error"; }
+    else { hNuevo.textContent = `Quedaría: ${(disponible-nuevoPorcVal).toFixed(2)}%`; hNuevo.className = "field-hint ok"; }
+  } else { hNuevo.textContent = `Disponible: ${disponible.toFixed(2)}%`; hNuevo.className = "field-hint"; }
+}
+
+function validarEdicionPorcentaje(inp) {
+  let nombre = inp.getAttribute('data-nombre');
+  let nuevoPorc = parseFloat(inp.value) || 0;
+  let otros = db.exec("SELECT SUM(porcentaje) FROM socios WHERE nombre != ?", [nombre]);
+  let totalOtros = parseFloat(otros[0]?.values[0][0] || 0);
+  let total = totalOtros + nuevoPorc;
+  let hint = document.getElementById(`hint_${nombre.replace(/\s/g,'_')}`);
+  if (!hint) return;
+  if (total > 100) { hint.textContent = `⚠️ Total: ${total.toFixed(2)}%`; hint.className = "field-hint error"; inp.classList.add('input-error'); }
+  else { hint.textContent = `Empresa: ${(100-total).toFixed(2)}%`; hint.className = "field-hint ok"; inp.classList.remove('input-error'); }
+}
+
+function cargarUltimaCompra() {
+  let prod = document.getElementById("compraProducto").value;
+  if (!prod) return;
+  let ult = ultimaCompraProducto(prod);
+  document.getElementById("compraPrecio").value = ult !== null ? ult : 0;
+  actualizarHintsCompra();
+}
+
+function cargarUltimaVenta() {
+  let prod = document.getElementById("ventaProducto").value;
+  if (!prod) return;
+  let ult = ultimaVentaProducto(prod);
+  let ref = obtenerPrecioReferencia(prod);
+  document.getElementById("ventaPrecioUnitario").value = ref || (ult !== null ? ult : 0);
+  actualizarHintsVenta();
+}
+
+// ════════════════════════════════════════════════
+// CONFIGURACIÓN UI
+// ════════════════════════════════════════════════
+function cargarConfigUI() {
+  document.getElementById("cfgTarjeta").value = getConfig("tarjeta");
+  document.getElementById("cfgCelular").value = getConfig("celular");
+  document.getElementById("cfgEnzona").value = getConfig("enzona");
+  document.getElementById("cfgGoogleClientId").value = getConfig("google_client_id");
+}
+
+// ════════════════════════════════════════════════
+// QR — GENERACIÓN (CON MONTO)
+// ════════════════════════════════════════════════
+function generarQRTransfermovil() {
+  let tarjeta = getConfig("tarjeta");
+  let celular = getConfig("celular");
+  if (!tarjeta) { mostrarMsg("Configura el número de tarjeta en ⚙️ Configuración", true); return null; }
+  // Formato: TRANSFERMOVIL_ETECSA,TRANSFERENCIA,{tarjeta},{móvil} - SIN MONTO
+  let texto = `TRANSFERMOVIL_ETECSA,TRANSFERENCIA,${tarjeta},${celular || ''}`;
+  return texto;
+}
+
+function generarQREnzona() {
+  let codigo = getConfig("enzona");
+  if (!codigo) { mostrarMsg("Configura el código QR de EnZona en ⚙️ Configuración", true); return null; }
+  return codigo;
+}
+
+function mostrarModalQR(metodo, totalMonto, onConfirmar) {
+  let contenidoQR = null;
+  let titulo = "";
+  let infoHTML = "";
+
+  let total = totalMonto;
+  let itemsInfo = carrito.map(i => `${i.cant}× ${i.prod} @ ${i.precio.toFixed(2)} = ${(i.cant*i.precio).toFixed(2)} CUP`).join('<br>');
+
+  if (metodo === 'transfermovil') {
+    contenidoQR = generarQRTransfermovil(total);
+    if (!contenidoQR) return;
+    titulo = "📱 Pago por Transfermóvil";
+    let tarjeta = getConfig("tarjeta");
+    let celular = getConfig("celular");
+    infoHTML = `
+      <p><strong>Items:</strong><br>${itemsInfo}</p>
+      <p style="margin-top:8px"><strong>Total a pagar:</strong> <span style="font-family:'JetBrains Mono',monospace;color:var(--green);font-size:1.1rem">${total.toFixed(2)} CUP</span></p>
+      <p style="margin-top:6px"><strong>Tarjeta:</strong> ${tarjeta}</p>
+      ${celular ? `<p><strong>Celular:</strong> ${celular}</p>` : ''}
+      <p style="margin-top:8px;color:var(--amber);font-size:0.7rem">⚠️ El cliente debe escanear el QR y el monto se cargará automáticamente</p>
+    `;
+  } else if (metodo === 'enzona') {
+    contenidoQR = generarQREnzona();
+    if (!contenidoQR) return;
+    titulo = "📱 Pago por EnZona";
+    infoHTML = `
+      <p><strong>Items:</strong><br>${itemsInfo}</p>
+      <p style="margin-top:8px"><strong>Total a cobrar:</strong> <span style="font-family:'JetBrains Mono',monospace;color:var(--green);font-size:1.1rem">${total.toFixed(2)} CUP</span></p>
+      <p style="margin-top:6px;color:var(--muted);font-size:0.75rem">Solicita al cliente que escanee el QR y te transfiera el monto indicado.</p>
+    `;
+  }
+
+  document.getElementById("modalQRTitulo").textContent = titulo;
+  document.getElementById("modalQRInfo").innerHTML = infoHTML;
+
+  let qrDiv = document.getElementById("qrCanvas");
+  qrDiv.innerHTML = "";
+  new QRCode(qrDiv, {
+    text: contenidoQR,
+    width: 200,
+    height: 200,
+    colorDark: "#0f1f3d",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  document.getElementById("qrTextoInfo").textContent = metodo === 'transfermovil'
+    ? "El cliente escanea este QR con la app Transfermóvil y el monto se carga automáticamente"
+    : "El cliente escanea este QR con la app EnZona";
+
+  document.getElementById("modalQR").classList.add("open");
+
+  let btnConfirmar = document.getElementById("btnConfirmarPago");
+  let btnCancelar = document.getElementById("btnCancelarPago");
+  let nuevoConfirmar = btnConfirmar.cloneNode(true);
+  let nuevoCancelar = btnCancelar.cloneNode(true);
+  btnConfirmar.replaceWith(nuevoConfirmar);
+  btnCancelar.replaceWith(nuevoCancelar);
+  nuevoConfirmar.addEventListener('click', () => {
+    document.getElementById("modalQR").classList.remove("open");
+    onConfirmar();
+  });
+  nuevoCancelar.addEventListener('click', () => {
+    document.getElementById("modalQR").classList.remove("open");
+  });
+}
+
+// ════════════════════════════════════════════════
+// REGISTRAR VENTA (con carrito)
+// ════════════════════════════════════════════════
+function registrarVentaCarrito(metodo) {
+  let fecha = document.getElementById("ventaFecha").value;
+  if (!fecha) { mostrarMsg("Ingresa la fecha", true); return; }
+  if (carrito.length === 0) { mostrarMsg("El carrito está vacío", true); return; }
+
+  for (let item of carrito) {
+    let stock = calcularStockProducto(item.prod);
+    if (item.cant > stock) {
+      mostrarMsg(`Stock insuficiente para ${item.prod} (disponible: ${stock})`, true);
+      return;
+    }
+  }
+
+  let total = totalCarrito();
+  let tipoMovCaja = metodo === 'efectivo' ? 'Venta en efectivo' : 'Transferencia recibida';
+  let metodoPagoTexto = metodo === 'efectivo' ? 'Efectivo' : metodo === 'transfermovil' ? 'Transfermóvil' : 'EnZona';
+
+  for (let item of carrito) {
+    asegurarProducto(item.prod);
+    db.run("INSERT INTO ventas (fecha,producto,cantidad,precio_venta,metodo_pago) VALUES (?,?,?,?,?)",
+      [fecha, item.prod, item.cant, item.precio, metodoPagoTexto]);
+    db.run("UPDATE productos SET precio_venta_ref=? WHERE nombre=?", [item.precio, item.prod]);
+  }
+  db.run("INSERT INTO caja (fecha,tipo,concepto,socio,entrada,salida,transferencia) VALUES (?,?,?,?,?,?,?)",
+    [fecha, tipoMovCaja, `Venta ${metodoPagoTexto} (${carrito.length} producto${carrito.length>1?'s':''})`, "", total, 0, 0]);
+
+  guardarDB();
+  carrito = [];
+  renderCarrito();
+  actualizarTodo();
+  mostrarMsg(`✅ Venta registrada: ${total.toFixed(2)} CUP (${metodoPagoTexto})`, false);
+}
+
+// ════════════════════════════════════════════════
+// EXCEL — IMPORTAR / EXPORTAR
+// ════════════════════════════════════════════════
+async function importarDesdeExcel(file) {
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(data);
+
+  let todasOps = [];
+
+  if (workbook.Sheets["Compras"]) {
+    for (let row of XLSX.utils.sheet_to_json(workbook.Sheets["Compras"])) {
+      if (row.Fecha && row.Producto && row.Cantidad && row.PrecioUnitario)
+        todasOps.push({ fecha: convertirFechaExcel(row.Fecha), tipo: "compra", producto: row.Producto, cantidad: parseFloat(row.Cantidad), precio: parseFloat(row.PrecioUnitario) });
+    }
+  }
+
+  if (workbook.Sheets["Ventas"]) {
+    for (let row of XLSX.utils.sheet_to_json(workbook.Sheets["Ventas"])) {
+      if (row.Fecha && row.Producto && row.Cantidad && row.PrecioVenta)
+        todasOps.push({ fecha: convertirFechaExcel(row.Fecha), tipo: "venta", producto: row.Producto, cantidad: parseFloat(row.Cantidad), precio: parseFloat(row.PrecioVenta), metodo: row.MetodoPago || 'Efectivo' });
+    }
+  }
+
+  if (workbook.Sheets["Caja"]) {
+    // Tipos autogenerados al registrar compras/ventas — no deben importarse desde Caja
+    // porque el importador ya los recrea al procesar las hojas Compras y Ventas.
+    // Sí deben importarse: Apertura, Aporte (efectivo o transferencia), Retiro socio, gastos, etc.
+    const tiposExcluidos = ["compra","venta en efectivo","transferencia recibida"];
+    for (let row of XLSX.utils.sheet_to_json(workbook.Sheets["Caja"])) {
+      if (row.Fecha && row.Tipo) {
+        let tipoL = (row.Tipo || "").toLowerCase().trim();
+        if (!tiposExcluidos.includes(tipoL)) {
+          // Compatibilidad: columna puede llamarse "Entrada" (formato viejo) o "Efectivo" (nuevo)
+          let efectivo = parseFloat(row.Efectivo ?? row.Entrada) || 0;
+          let transf   = parseFloat(row.Transferencia) || 0;
+          todasOps.push({ fecha: convertirFechaExcel(row.Fecha), tipo: row.Tipo, concepto: row.Concepto||"", socio: row.Socio||"", entrada: efectivo, salida: parseFloat(row.Salida)||0, transferencia: transf });
+        }
+      }
+    }
+  }
+
+  if (workbook.Sheets["Socios"]) {
+    for (let row of XLSX.utils.sheet_to_json(workbook.Sheets["Socios"])) {
+      if (row.Nombre && row.Porcentaje !== undefined) {
+        let existe = db.exec("SELECT nombre FROM socios WHERE nombre=?", [row.Nombre]);
+        if (!existe[0]?.values.length) db.run("INSERT INTO socios VALUES (?,?)", [row.Nombre, parseFloat(row.Porcentaje)]);
+      }
+    }
+  }
+
+  if (workbook.Sheets["Configuracion"]) {
+    for (let row of XLSX.utils.sheet_to_json(workbook.Sheets["Configuracion"])) {
+      if (row.Clave && row.Valor !== undefined) setConfig(row.Clave, String(row.Valor));
+    }
+  }
+
+  todasOps.sort((a, b) => a.fecha.localeCompare(b.fecha));
+  let nC=0, nV=0, nM=0;
+  for (let op of todasOps) {
+    if (op.tipo === "compra") {
+      asegurarProducto(op.producto);
+      db.run("INSERT INTO compras (fecha,producto,cantidad,precio_unit) VALUES (?,?,?,?)", [op.fecha, op.producto, op.cantidad, op.precio]);
+      db.run("INSERT INTO caja (fecha,tipo,concepto,socio,entrada,salida,transferencia) VALUES (?,?,?,?,?,?,?)", [op.fecha, "Compra", "Compra "+op.producto, "", 0, op.cantidad*op.precio, 0]);
+      nC++;
+    } else if (op.tipo === "venta") {
+      asegurarProducto(op.producto);
+      db.run("INSERT INTO ventas (fecha,producto,cantidad,precio_venta,metodo_pago) VALUES (?,?,?,?,?)", [op.fecha, op.producto, op.cantidad, op.precio, op.metodo]);
+      let tipoMovCaja = op.metodo === 'Efectivo' ? 'Venta en efectivo' : 'Transferencia recibida';
+      db.run("INSERT INTO caja (fecha,tipo,concepto,socio,entrada,salida,transferencia) VALUES (?,?,?,?,?,?,?)", [op.fecha, tipoMovCaja, "Venta "+op.producto, "", op.cantidad*op.precio, 0, 0]);
+      db.run("UPDATE productos SET precio_venta_ref=? WHERE nombre=?", [op.precio, op.producto]);
+      nV++;
+    } else {
+      db.run("INSERT INTO caja (fecha,tipo,concepto,socio,entrada,salida,transferencia) VALUES (?,?,?,?,?,?,?)", [op.fecha, op.tipo, op.concepto, op.socio, op.entrada, op.salida, op.transferencia||0]);
+      nM++;
+    }
+  }
+  guardarDB();
+  mostrarMsg(`✅ Importado: ${nC} compras, ${nV} ventas, ${nM} movimientos`, false);
+  actualizarTodo();
+}
+
+function exportarAExcel() {
+  let compras = db.exec("SELECT fecha, producto, cantidad, precio_unit FROM compras ORDER BY fecha");
+  let ventas = db.exec("SELECT fecha, producto, cantidad, precio_venta, metodo_pago FROM ventas ORDER BY fecha");
+  // Exportar caja SIN los movimientos autogenerados por compras y ventas.
+  // Esos se recrean automáticamente al importar desde las hojas Compras y Ventas.
+  // Se conservan: Apertura, Aporte (efectivo y transferencia), Retiro socio, gastos manuales, etc.
+  let tiposAutogenerados = ["Compra","Venta en efectivo","Transferencia recibida"];
+  let cajaRaw = db.exec("SELECT fecha, tipo, concepto, socio, entrada, salida, COALESCE(transferencia,0) FROM caja ORDER BY fecha");
+  let cajaSinDuplicados = (cajaRaw[0]?.values || []).filter(row => !tiposAutogenerados.includes(row[1]));
+  let socios = db.exec("SELECT nombre, porcentaje FROM socios");
+  let config = db.exec("SELECT clave, valor FROM configuracion");
+
+  let wb = XLSX.utils.book_new();
+  let comprasData = [["Fecha","Producto","Cantidad","PrecioUnitario"]];
+  for (let row of compras[0]?.values || []) comprasData.push([row[0], row[1], row[2], row[3]]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(comprasData), "Compras");
+
+  let ventasData = [["Fecha","Producto","Cantidad","PrecioVenta","MetodoPago"]];
+  for (let row of ventas[0]?.values || []) ventasData.push([row[0], row[1], row[2], row[3], row[4]||"Efectivo"]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ventasData), "Ventas");
+
+  let cajaData = [["Fecha","Tipo","Concepto","Socio","Efectivo","Salida","Transferencia"]];
+  for (let row of cajaSinDuplicados) cajaData.push([row[0], row[1], row[2], row[3]||"", row[4], row[5], row[6]||0]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cajaData), "Caja");
+
+  let sociosData = [["Nombre","Porcentaje"]];
+  for (let row of socios[0]?.values || []) sociosData.push([row[0], row[1]]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sociosData), "Socios");
+
+  let configData = [["Clave","Valor"]];
+  for (let row of config[0]?.values || []) configData.push([row[0], row[1]]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(configData), "Configuracion");
+
+  XLSX.writeFile(wb, `exportacion_negocio_${new Date().toISOString().slice(0,19)}.xlsx`);
+  mostrarMsg("Datos exportados a Excel correctamente", false);
+}
+
+// ════════════════════════════════════════════════
+// GOOGLE DRIVE
+// ════════════════════════════════════════════════
+let gapiLoaded = false;
+let gisLoaded = false;
+let tokenClient = null;
+let accessToken = null;
+
+function cargarGoogleAPIs(callback) {
+  let clientId = getConfig("google_client_id");
+  if (!clientId) {
+    mostrarMsg("Configura tu Google Client ID en ⚙️ Configuración", true);
+    return;
+  }
+  if (!gapiLoaded) {
+    let script = document.createElement('script');
+    script.src = "https://apis.google.com/js/api.js";
+    script.onload = () => {
+      gapi.load('client:picker', () => {
+        gapi.client.init({
+          discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"]
+        }).then(() => { gapiLoaded = true; iniciarGIS(clientId, callback); });
+      });
+    };
+    document.head.appendChild(script);
+  } else {
+    iniciarGIS(clientId, callback);
+  }
+}
+
+function iniciarGIS(clientId, callback) {
+  if (!gisLoaded) {
+    let script = document.createElement('script');
+    script.src = "https://accounts.google.com/gsi/client";
+    script.onload = () => {
+      gisLoaded = true;
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly',
+        callback: (resp) => {
+          if (resp.error) { mostrarMsg("Error de autenticación Google: " + resp.error, true); return; }
+          accessToken = resp.access_token;
+          callback();
+        }
+      });
+      tokenClient.requestAccessToken();
+    };
+    document.head.appendChild(script);
+  } else {
+    if (accessToken) callback();
+    else tokenClient.requestAccessToken();
+  }
+}
+
+async function subirArchivoDrive(nombre, blob, mimeType) {
+  let driveStatus = document.getElementById("driveStatus");
+  driveStatus.textContent = "⏳ Subiendo archivo...";
+  let metadata = { name: nombre, mimeType: mimeType };
+  let form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", blob);
+  let resp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + accessToken },
+    body: form
+  });
+  if (!resp.ok) { driveStatus.textContent = "❌ Error al subir. Intenta de nuevo."; mostrarMsg("Error al subir a Drive", true); return; }
+  let data = await resp.json();
+  driveStatus.innerHTML = `✅ Subido: <a href="${data.webViewLink}" target="_blank" style="color:var(--accent)">${data.name}</a>`;
+  mostrarMsg("Archivo subido a Google Drive", false);
+}
+
+function exportarDBaDrive() {
+  cargarGoogleAPIs(async () => {
+    let data = db.export();
+    let blob = new Blob([data], { type: "application/x-sqlite3" });
+    await subirArchivoDrive(`backup_negocio_${new Date().toISOString().slice(0,10)}.db`, blob, "application/x-sqlite3");
+  });
+}
+
+function exportarExcelaDrive() {
+  cargarGoogleAPIs(async () => {
+    let compras = db.exec("SELECT fecha, producto, cantidad, precio_unit FROM compras ORDER BY fecha");
+    let ventas = db.exec("SELECT fecha, producto, cantidad, precio_venta, metodo_pago FROM ventas ORDER BY fecha");
+    let tiposAutogeneradosDrive = ["Compra","Venta en efectivo","Transferencia recibida"];
+    let cajaRawDrive = db.exec("SELECT fecha, tipo, concepto, socio, entrada, salida, COALESCE(transferencia,0) FROM caja ORDER BY fecha");
+    let cajaDrive = (cajaRawDrive[0]?.values || []).filter(row => !tiposAutogeneradosDrive.includes(row[1]));
+    let wb = XLSX.utils.book_new();
+    let cD = [["Fecha","Producto","Cantidad","PrecioUnitario"]];
+    for (let row of compras[0]?.values || []) cD.push([row[0],row[1],row[2],row[3]]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cD), "Compras");
+    let vD = [["Fecha","Producto","Cantidad","PrecioVenta","MetodoPago"]];
+    for (let row of ventas[0]?.values || []) vD.push([row[0],row[1],row[2],row[3],row[4]||"Efectivo"]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(vD), "Ventas");
+    let cjD = [["Fecha","Tipo","Concepto","Socio","Efectivo","Salida","Transferencia"]];
+    for (let row of cajaDrive) cjD.push([row[0],row[1],row[2],row[3]||"",row[4],row[5],row[6]||0]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cjD), "Caja");
+    let wbArray = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+    let blob = new Blob([wbArray], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    await subirArchivoDrive(`exportacion_negocio_${new Date().toISOString().slice(0,10)}.xlsx`, blob, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  });
+}
+
+function importarDBdesdeDrive() {
+  cargarGoogleAPIs(() => {
+    let picker = new google.picker.PickerBuilder()
+      .addView(new google.picker.DocsView().setMimeTypes("application/x-sqlite3,application/octet-stream"))
+      .setOAuthToken(accessToken)
+      .setDeveloperKey("")
+      .setCallback(async (data) => {
+        if (data.action !== google.picker.Action.PICKED) return;
+        let fileId = data.docs[0].id;
+        let driveStatus = document.getElementById("driveStatus");
+        driveStatus.textContent = "⏳ Descargando archivo...";
+        let resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+          headers: { Authorization: "Bearer " + accessToken }
+        });
+        if (!resp.ok) { driveStatus.textContent = "❌ Error al descargar"; mostrarMsg("Error al descargar", true); return; }
+        let buffer = await resp.arrayBuffer();
+        if (!confirm("¿Restaurar la base de datos? Esto reemplazará todos los datos actuales.")) return;
+        await initDB(new Uint8Array(buffer));
+        crearEstructuraVacia();
+        guardarDB();
+        actualizarTodo();
+        driveStatus.textContent = "✅ Base de datos restaurada desde Drive";
+        mostrarMsg("Base restaurada desde Drive", false);
+      })
+      .build();
+    picker.setVisible(true);
+  });
+}
+
+// ════════════════════════════════════════════════
+// EVENTOS
+// ════════════════════════════════════════════════
+
+function bindNav(container) {
+  container.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll(`.nav-btn[data-tab="${btn.getAttribute('data-tab')}"]`).forEach(b => b.classList.add('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active-panel'));
+      document.getElementById(`panel-${btn.getAttribute('data-tab')}`).classList.add('active-panel');
+    });
+  });
+}
+bindNav(document.querySelector('.sidebar'));
+bindNav(document.getElementById('mobileNav'));
+
+['compraCantidad','compraPrecio','ventaCantidad','ventaPrecioUnitario','nuevoSocioPorc'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', soloNumeros);
+});
+
+document.getElementById("movEntrada").addEventListener('input', () => {
+  let val = parseFloat(document.getElementById("movEntrada").value) || 0;
+  if (val > 0) { document.getElementById("movSalida").value = ""; document.getElementById("movSalida").disabled = true; document.getElementById("movSalidaHint").textContent = "Bloqueado (hay entrada activa)"; document.getElementById("movSalidaHint").className = "field-hint"; }
+  else { document.getElementById("movSalida").disabled = false; document.getElementById("movSalidaHint").textContent = ""; }
+});
+document.getElementById("movSalida").addEventListener('input', () => {
+  let val = parseFloat(document.getElementById("movSalida").value) || 0;
+  if (val > 0) { document.getElementById("movEntrada").value = ""; document.getElementById("movEntrada").disabled = true; document.getElementById("movEntradaHint").textContent = "Bloqueado (hay salida activa)"; document.getElementById("movEntradaHint").className = "field-hint"; }
+  else { document.getElementById("movEntrada").disabled = false; document.getElementById("movEntradaHint").textContent = ""; }
+});
+
+document.getElementById("compraProducto").addEventListener('change', cargarUltimaCompra);
+document.getElementById("compraCantidad").addEventListener('input', actualizarHintsCompra);
+document.getElementById("compraPrecio").addEventListener('input', actualizarHintsCompra);
+document.getElementById("ventaProducto").addEventListener('change', cargarUltimaVenta);
+document.getElementById("ventaCantidad").addEventListener('input', actualizarHintsVenta);
+document.getElementById("ventaPrecioUnitario").addEventListener('input', actualizarHintsVenta);
+document.getElementById("movTipo").addEventListener('change', actualizarHintsCaja);
+document.getElementById("nuevoSocioPorc").addEventListener('input', actualizarHintsSocios);
+
+document.querySelectorAll('.metodo-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.metodo-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    metodoPagoSeleccionado = btn.getAttribute('data-metodo');
+  });
+});
+
+document.getElementById("btnCrearProducto").onclick = () => {
+  let nuevo = document.getElementById("nuevoProducto").value.trim();
+  if (nuevo && !productos.includes(nuevo)) {
+    db.run("INSERT INTO productos VALUES (?,?)", [nuevo, null]);
+    guardarDB(); actualizarTodo();
+    document.getElementById("nuevoProducto").value = "";
+    let selectCompra = document.getElementById("compraProducto");
+    selectCompra.value = nuevo;
+    cargarUltimaCompra();
+    mostrarMsg(`Producto "${nuevo}" creado y seleccionado`, false);
+  } else { mostrarMsg("Ya existe ese producto o el nombre está vacío", true); }
+};
+
+document.getElementById("btnAgregarCompra").onclick = () => {
+  let fecha = document.getElementById("compraFecha").value;
+  let prod = document.getElementById("compraProducto").value;
+  let cant = parseFloat(document.getElementById("compraCantidad").value);
+  let prec = parseFloat(document.getElementById("compraPrecio").value);
+  if (!fecha || !prod) { mostrarMsg("Completa fecha y producto", true); return; }
+  if (!cant || cant <= 0) { mostrarMsg("La cantidad debe ser mayor a 0", true); return; }
+  if (isNaN(prec) || prec < 0) { mostrarMsg("El precio debe ser 0 o mayor", true); return; }
+  let total = cant * prec;
+  let saldo = calcularSaldoCaja();
+
+  if (total > saldo) {
+    pendienteCompra = { fecha, prod, cant, prec, total };
+    document.getElementById("modalAporteInfo").innerHTML = `
+      <p><strong>Saldo disponible:</strong> <span style="color:var(--red);font-family:'JetBrains Mono',monospace">${saldo.toFixed(2)} CUP</span></p>
+      <p><strong>Total de la compra:</strong> <span style="font-family:'JetBrains Mono',monospace">${total.toFixed(2)} CUP</span></p>
+      <p><strong>Falta:</strong> <span style="color:var(--amber);font-family:'JetBrains Mono',monospace">${(total - saldo).toFixed(2)} CUP</span></p>
+    `;
+    document.getElementById("modalAporte").classList.add("open");
+    return;
+  }
+  ejecutarCompra(fecha, prod, cant, prec, total);
+};
+
+function ejecutarCompra(fecha, prod, cant, prec, total) {
+  asegurarProducto(prod);
+  db.run("INSERT INTO compras (fecha,producto,cantidad,precio_unit) VALUES (?,?,?,?)", [fecha, prod, cant, prec]);
+  db.run("INSERT INTO caja (fecha,tipo,concepto,socio,entrada,salida,transferencia) VALUES (?,?,?,?,?,?,?)", [fecha, "Compra", "Compra "+prod, "", 0, total, 0]);
+  guardarDB(); actualizarTodo();
+  mostrarMsg(`✅ Compra registrada: ${cant} × ${prod} = ${total.toFixed(2)} CUP`, false);
+}
+
+document.getElementById("btnConfirmarAporte").onclick = () => {
+  document.getElementById("modalAporte").classList.remove("open");
+  if (!pendienteCompra) return;
+  let { fecha, prod, cant, prec, total } = pendienteCompra;
+  let saldo = calcularSaldoCaja();
+  let faltan = total - saldo;
+  db.run("INSERT INTO caja (fecha,tipo,concepto,socio,entrada,salida,transferencia) VALUES (?,?,?,?,?,?,?)",
+    [fecha, "Aporte", `Aporte para compra de ${prod}`, "", faltan, 0, 0]);
+  ejecutarCompra(fecha, prod, cant, prec, total);
+  mostrarMsg(`✅ Aporte de ${faltan.toFixed(2)} CUP registrado y compra realizada`, false);
+  pendienteCompra = null;
+};
+document.getElementById("btnCancelarAporte").onclick = () => {
+  document.getElementById("modalAporte").classList.remove("open");
+  pendienteCompra = null;
+};
+
+document.getElementById("btnAddCarrito").onclick = () => {
+  let prod = document.getElementById("ventaProducto").value;
+  let cant = parseFloat(document.getElementById("ventaCantidad").value);
+  let precio = parseFloat(document.getElementById("ventaPrecioUnitario").value);
+  if (!prod) { mostrarMsg("Selecciona un producto", true); return; }
+  if (!cant || cant <= 0) { mostrarMsg("La cantidad debe ser mayor a 0", true); return; }
+  if (!precio || precio < 0) { mostrarMsg("El precio debe ser mayor a 0", true); return; }
+
+  let enCarrito = carrito.filter(i => i.prod === prod).reduce((s, i) => s + i.cant, 0);
+  let stockActual = calcularStockProducto(prod);
+  if (enCarrito + cant > stockActual) {
+    mostrarMsg(`Stock insuficiente para ${prod} (disponible: ${stockActual - enCarrito})`, true);
+    return;
+  }
+
+  carrito.push({ prod, cant, precio });
+  renderCarrito();
+  document.getElementById("ventaCantidad").value = "";
+  mostrarMsg(`✅ ${cant} × ${prod} agregado al carrito`, false);
+};
+
+document.getElementById("btnLimpiarCarrito").onclick = () => {
+  if (carrito.length > 0 && !confirm("¿Vaciar el carrito?")) return;
+  carrito = [];
+  renderCarrito();
+};
+
+document.getElementById("btnFinalizarVenta").onclick = () => {
+  if (carrito.length === 0) { mostrarMsg("El carrito está vacío", true); return; }
+  let fecha = document.getElementById("ventaFecha").value;
+  if (!fecha) { mostrarMsg("Ingresa la fecha", true); return; }
+
+  if (metodoPagoSeleccionado === 'efectivo') {
+    registrarVentaCarrito('efectivo');
+  } else {
+    mostrarModalQR(metodoPagoSeleccionado, totalCarrito(), () => {
+      registrarVentaCarrito(metodoPagoSeleccionado);
+    });
+  }
+};
+
+document.getElementById("movTipo").addEventListener("change", () => {
+  let tipo = document.getElementById("movTipo").value;
+  let esMixto = (tipo === "Apertura" || tipo === "Aporte");
+  document.getElementById("camposEstandar").style.display = esMixto ? "none" : "flex";
+  document.getElementById("camposMixtos").style.display = esMixto ? "flex" : "none";
+  actualizarHintsCaja();
+});
+document.getElementById("movEfectivo").addEventListener("input", actualizarTotalMixto);
+document.getElementById("movTransferencia").addEventListener("input", actualizarTotalMixto);
+function actualizarTotalMixto() {
+  let ef = parseFloat(document.getElementById("movEfectivo").value) || 0;
+  let tr = parseFloat(document.getElementById("movTransferencia").value) || 0;
+  document.getElementById("movTotalMixto").textContent = (ef + tr).toFixed(2);
+}
+
+document.getElementById("btnAddMovimiento").onclick = () => {
+  let fecha = document.getElementById("movFecha").value;
+  let tipo = document.getElementById("movTipo").value;
+  let concepto = document.getElementById("movConcepto").value;
+  let socio = document.getElementById("movSocio").value;
+  if (!fecha) { mostrarMsg("Ingresa una fecha", true); return; }
+  if (tipo === "Apertura" && tieneApertura()) { mostrarMsg("Ya existe una Apertura de Capital registrada.", true); return; }
+
+  if (tipo === "Apertura" || tipo === "Aporte") {
+    // Modo mixto: efectivo y/o transferencia
+    let efectivo = parseFloat(document.getElementById("movEfectivo").value) || 0;
+    let transf = parseFloat(document.getElementById("movTransferencia").value) || 0;
+    if (efectivo === 0 && transf === 0) { mostrarMsg("Ingresa al menos un monto (efectivo o transferencia)", true); return; }
+    // entrada = efectivo; transferencia = columna separada; salida = 0
+    db.run("INSERT INTO caja (fecha,tipo,concepto,socio,entrada,salida,transferencia) VALUES (?,?,?,?,?,?,?)",
+      [fecha, tipo, concepto || tipo, socio, efectivo, 0, transf]);
+    document.getElementById("movEfectivo").value = "";
+    document.getElementById("movTransferencia").value = "";
+    document.getElementById("movTotalMixto").textContent = "0.00";
+    let desc = [];
+    if (efectivo > 0) desc.push(`${efectivo.toFixed(2)} efectivo`);
+    if (transf > 0) desc.push(`${transf.toFixed(2)} transferencia`);
+    mostrarMsg(`✅ ${tipo} registrada: ${desc.join(" + ")}`, false);
+  } else {
+    let entrada = parseFloat(document.getElementById("movEntrada").value) || 0;
+    let salida = parseFloat(document.getElementById("movSalida").value) || 0;
+    if (entrada === 0 && salida === 0) { mostrarMsg("Ingresa un monto en Entrada o Salida", true); return; }
+    db.run("INSERT INTO caja (fecha,tipo,concepto,socio,entrada,salida,transferencia) VALUES (?,?,?,?,?,?,?)",
+      [fecha, tipo, concepto, socio, entrada, salida, 0]);
+    document.getElementById("movEntrada").value = "";
+    document.getElementById("movSalida").value = "";
+    document.getElementById("movEntradaHint").textContent = "";
+    document.getElementById("movSalidaHint").textContent = "";
+    mostrarMsg("Movimiento registrado", false);
+  }
+  document.getElementById("movConcepto").value = "";
+  guardarDB(); actualizarTodo();
+};
+
+document.getElementById("btnAgregarSocio").onclick = () => {
+  let nombre = document.getElementById("nuevoSocio").value.trim();
+  let porcentaje = parseFloat(document.getElementById("nuevoSocioPorc").value);
+  if (!nombre) { mostrarMsg("Ingresa el nombre del socio", true); return; }
+  if (isNaN(porcentaje) || porcentaje < 0) { mostrarMsg("Porcentaje inválido", true); return; }
+  if (porcentaje > 100) { mostrarMsg("El porcentaje no puede superar 100%", true); return; }
+  if (totalPorcentajeSocios() + porcentaje > 100) { mostrarMsg(`No se puede. Superaría 100%`, true); return; }
+  let existe = db.exec("SELECT nombre FROM socios WHERE nombre=?", [nombre]);
+  if (existe[0]?.values.length > 0) { mostrarMsg("Ya existe ese socio", true); return; }
+  db.run("INSERT INTO socios VALUES (?,?)", [nombre, porcentaje]);
+  guardarDB(); actualizarSocios();
+  document.getElementById("nuevoSocio").value = "";
+  document.getElementById("nuevoSocioPorc").value = "";
+  mostrarMsg(`Socio "${nombre}" agregado con ${porcentaje}%`, false);
+};
+
+document.getElementById("btnExportarDB").onclick = () => {
+  const data = db.export();
+  const blob = new Blob([data], { type: "application/x-sqlite3" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `backup_negocio_${new Date().toISOString().slice(0,19)}.db`;
+  link.click();
+  mostrarMsg("Base de datos exportada", false);
+};
+document.getElementById("btnImportarDB").onclick = () => document.getElementById("archivoImportarDB").click();
+document.getElementById("archivoImportarDB").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!confirm("¿Restaurar la base de datos? Esto reemplazará todos los datos actuales.")) return;
+  const buffer = await file.arrayBuffer();
+  await initDB(new Uint8Array(buffer));
+  crearEstructuraVacia();
+  guardarDB(); actualizarTodo();
+  mostrarMsg("Base restaurada desde archivo .db", false);
+  document.getElementById("archivoImportarDB").value = "";
+};
+document.getElementById("btnExportarExcel").onclick = exportarAExcel;
+document.getElementById("btnImportarExcel").onclick = () => document.getElementById("archivoImportarExcel").click();
+document.getElementById("archivoImportarExcel").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  await importarDesdeExcel(file);
+  document.getElementById("archivoImportarExcel").value = "";
+};
+document.getElementById("btnNuevoNegocio").onclick = async () => {
+  if (confirm("⚠️ Esto BORRARÁ TODOS LOS DATOS. ¿Continuar?")) {
+    await initDB();
+    crearEstructuraVacia();
+    guardarDB(); actualizarTodo();
+    mostrarMsg("Negocio vacío creado. Registra la Apertura de Capital.", false);
+  }
+};
+
+document.getElementById("btnExportarDBDrive").onclick = exportarDBaDrive;
+document.getElementById("btnImportarDBDrive").onclick = importarDBdesdeDrive;
+document.getElementById("btnExportarExcelDrive").onclick = exportarExcelaDrive;
+
+document.getElementById("btnGuardarConfig").onclick = () => {
+  let tarjeta = document.getElementById("cfgTarjeta").value.trim();
+  let celular = document.getElementById("cfgCelular").value.trim();
+  let enzona = document.getElementById("cfgEnzona").value.trim();
+  let googleClientId = document.getElementById("cfgGoogleClientId").value.trim();
+  
+  // Validar tarjeta (16 dígitos numéricos)
+  if (tarjeta && !/^\d{16}$/.test(tarjeta)) {
+    mostrarMsg("❌ La tarjeta debe tener exactamente 16 dígitos numéricos", true);
+    document.getElementById("cfgTarjeta").classList.add("input-error");
+    return;
+  }
+  document.getElementById("cfgTarjeta").classList.remove("input-error");
+  
+  // Validar celular (8 dígitos numéricos, opcional)
+  if (celular && !/^\d{8}$/.test(celular)) {
+    mostrarMsg("❌ El celular debe tener exactamente 8 dígitos (ej: 51234567)", true);
+    document.getElementById("cfgCelular").classList.add("input-error");
+    return;
+  }
+  document.getElementById("cfgCelular").classList.remove("input-error");
+  
+  setConfig("tarjeta", tarjeta);
+  setConfig("celular", celular);
+  setConfig("enzona", enzona);
+  setConfig("google_client_id", googleClientId);
+  guardarDB();
+  mostrarMsg("✅ Configuración guardada correctamente", false);
+};
+
+(async () => {
+  ['compraFecha','ventaFecha','movFecha'].forEach(setHoy);
+  await recargarDesdeDB();
+  cargarUltimaCompra();
+  cargarUltimaVenta();
+  actualizarHintsCaja();
+  renderCarrito();
+})();
+</script>
+</body>
+</html>
